@@ -43,7 +43,14 @@ function isRecoverableReadErrorMessage(message: string) {
     normalized.includes('insufficient permissions') ||
     normalized.includes('supabase read denied') ||
     normalized.includes('supabase table') ||
-    normalized.includes('schema cache')
+    normalized.includes('schema cache') ||
+    normalized.includes('failed to fetch') ||
+    normalized.includes('network error') ||
+    normalized.includes('network request failed') ||
+    normalized.includes('fetch failed') ||
+    normalized.includes('load failed') ||
+    normalized.includes('connection') ||
+    normalized.includes('timeout')
   );
 }
 

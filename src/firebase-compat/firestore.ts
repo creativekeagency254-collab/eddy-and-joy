@@ -289,8 +289,26 @@ function isPermissionDeniedError(error: { code?: string; message?: string } | nu
   );
 }
 
+function isNetworkReadError(error: { code?: string; message?: string } | null | undefined) {
+  if (!error) {
+    return false;
+  }
+
+  const message = String(error.message ?? '').toLowerCase();
+
+  return (
+    message.includes('failed to fetch') ||
+    message.includes('network error') ||
+    message.includes('network request failed') ||
+    message.includes('fetch failed') ||
+    message.includes('load failed') ||
+    message.includes('connection') ||
+    message.includes('timeout')
+  );
+}
+
 function isRecoverableReadError(error: { code?: string; message?: string } | null | undefined) {
-  return isMissingTableError(error) || isPermissionDeniedError(error);
+  return isMissingTableError(error) || isPermissionDeniedError(error) || isNetworkReadError(error);
 }
 
 function makeMissingTableMessage(table: string) {
@@ -299,6 +317,26 @@ function makeMissingTableMessage(table: string) {
 
 function makePermissionDeniedMessage(table: string) {
   return `Supabase read denied for table '${table}'. Check RLS select policies and API keys.`;
+}
+
+function makeNetworkReadMessage(table: string) {
+  return `Supabase network read failed for table '${table}'. Falling back to local defaults.`;
+}
+
+function makeRecoverableReadMessage(table: string, error: { code?: string; message?: string } | null | undefined) {
+  if (isMissingTableError(error)) {
+    return makeMissingTableMessage(table);
+  }
+
+  if (isPermissionDeniedError(error)) {
+    return makePermissionDeniedMessage(table);
+  }
+
+  if (isNetworkReadError(error)) {
+    return makeNetworkReadMessage(table);
+  }
+
+  return `Supabase read failed for table '${table}'. Falling back to local defaults.`;
 }
 
 function getFallbackRowsForTable(table: string): DocumentData[] {
@@ -795,15 +833,20 @@ export async function getDocs<T = DocumentData>(
 ): Promise<QuerySnapshot<T>> {
   const queryValue = toQuery(target as any);
   const builder = applyQueryToBuilder(queryValue as Query<DocumentData>);
-  const { data, error } = await builder;
+  let data: any;
+  let error: { code?: string; message?: string } | null = null;
+
+  try {
+    const result = await builder;
+    data = result?.data;
+    error = result?.error ?? null;
+  } catch (caught) {
+    error = { message: caught instanceof Error ? caught.message : String(caught) };
+  }
 
   if (error) {
     if (isRecoverableReadError(error)) {
-      warnRecoverableRead(
-        isMissingTableError(error)
-          ? makeMissingTableMessage(queryValue.__table)
-          : makePermissionDeniedMessage(queryValue.__table)
-      );
+      warnRecoverableRead(makeRecoverableReadMessage(queryValue.__table, error));
       const fallbackRows = runFallbackQuery(queryValue as Query<DocumentData>);
       const fallbackDocs = fallbackRows.map((row, index) => {
         const id = resolveDocumentId(row, `${queryValue.__table}-fallback-${index}`);
@@ -837,15 +880,20 @@ async function getDocSnapshot<T = DocumentData>(docRef: DocumentReference<T>) {
     builder = builder.or(`productId.eq.${productId},product_id.eq.${productId}`);
   }
 
-  const { data, error } = await builder.maybeSingle();
+  let data: any;
+  let error: { code?: string; message?: string } | null = null;
+
+  try {
+    const result = await builder.maybeSingle();
+    data = result?.data;
+    error = result?.error ?? null;
+  } catch (caught) {
+    error = { message: caught instanceof Error ? caught.message : String(caught) };
+  }
 
   if (error) {
     if (isRecoverableReadError(error)) {
-      warnRecoverableRead(
-        isMissingTableError(error)
-          ? makeMissingTableMessage(docRef.__table)
-          : makePermissionDeniedMessage(docRef.__table)
-      );
+      warnRecoverableRead(makeRecoverableReadMessage(docRef.__table, error));
       return new DocumentSnapshot<T>(docRef.id, null, false);
     }
 
