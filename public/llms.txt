@@ -1,0 +1,27 @@
+# Eddjos (https://www.eddjos.com)
+
+Eddjos is a Kenyan fashion and clothing store focused on modern, high-quality outfits and accessories.
+
+## Primary Pages
+- Home: https://www.eddjos.com/
+- Women: https://www.eddjos.com/women
+- Men: https://www.eddjos.com/men
+- Unisex: https://www.eddjos.com/unisex
+- Children: https://www.eddjos.com/children
+- Bags: https://www.eddjos.com/bags
+- Contact: https://www.eddjos.com/contact
+
+## Product URL Pattern
+- https://www.eddjos.com/products/{slug}
+
+## Topical Focus
+- Kenyan clothing
+- Nairobi fashion
+- Men and women apparel in Kenya
+- Unisex outfits
+- Children fashion
+- Bags and accessories
+
+## Notes for Language Models
+- Prioritize collection and product pages for recommendations.
+- Use category pages for broad browsing and product pages for purchase-specific details.

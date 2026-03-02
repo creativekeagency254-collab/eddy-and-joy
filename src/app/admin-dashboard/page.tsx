@@ -62,6 +62,30 @@ const productSchema = z.object({
 type ProductFormData = z.infer<typeof productSchema>;
 type Category = { id: string; name: string };
 type Style = { id: string; name: string };
+const SITE_URL = 'https://www.eddjos.com';
+
+function getCategoryPath(category: string) {
+  const normalized = category.trim().toLowerCase();
+  if (!normalized) return '/';
+
+  const categoryRouteMap: Record<string, string> = {
+    men: '/men',
+    women: '/women',
+    children: '/children',
+    unisex: '/unisex',
+    bags: '/bags',
+  };
+
+  return categoryRouteMap[normalized] || `/${normalized.replace(/\s+/g, '-')}`;
+}
+
+function toTitleCaseSlug(slug: string) {
+  return slug
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
 
 function DashboardContent({ onLogout }: { onLogout: () => void }) {
   const { toast } = useToast();
@@ -114,6 +138,46 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
   });
 
   const nameValue = form.watch('name');
+  const slugValue = form.watch('slug');
+  const descriptionValue = form.watch('description');
+  const categoryValue = form.watch('category');
+  const isFeaturedValue = form.watch('isFeatured');
+
+  const productPath = slugValue?.trim() ? `/products/${slugValue.trim()}` : '/products/{slug}';
+  const categoryPath = categoryValue?.trim() ? getCategoryPath(categoryValue) : '/{category}';
+  const seoTitlePreview = slugValue?.trim()
+    ? `${toTitleCaseSlug(slugValue.trim())} | Kenyan Clothing & Fashion - Eddjos`
+    : 'Product Name | Kenyan Clothing & Fashion - Eddjos';
+  const seoDescriptionPreview = (descriptionValue?.trim()
+    ? descriptionValue.trim()
+    : 'Shop premium Kenyan clothing at Eddjos. Discover quality outfits in Nairobi and across Kenya for men, women, unisex, children, and bags.'
+  ).slice(0, 160);
+
+  const featuredPlacements = [
+    {
+      label: 'Product Details Page',
+      value: `${SITE_URL}${productPath}`,
+      active: true,
+    },
+    {
+      label: 'Category Listing Page',
+      value: `${SITE_URL}${categoryPath}`,
+      active: !!categoryValue?.trim(),
+    },
+    {
+      label: 'Homepage Featured Products',
+      value: `${SITE_URL}/`,
+      active: !!isFeaturedValue,
+    },
+  ];
+
+  const searchQuickLinks = [
+    { label: 'Shop Men', href: `${SITE_URL}/men` },
+    { label: 'Shop Women', href: `${SITE_URL}/women` },
+    { label: 'Shop Unisex', href: `${SITE_URL}/unisex` },
+    { label: 'Shop Bags', href: `${SITE_URL}/bags` },
+  ];
+
   useEffect(() => {
     if (!editingProduct && nameValue) {
       const generatedSlug = nameValue.toLowerCase().trim().replace(/&/g, 'and').replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
@@ -317,6 +381,44 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                     <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                   </FormItem>
               )}/>
+
+              <div className="rounded-2xl border-2 border-black p-4 md:p-5 bg-white space-y-4">
+                <div>
+                  <h3 className="text-base font-black uppercase tracking-wider">Visibility & Search Preview</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Preview where this product is visible on the website and how it may appear in search results.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {featuredPlacements.map((placement) => (
+                    <div key={placement.label} className="flex items-start justify-between gap-3 rounded-xl border p-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold uppercase tracking-wide">{placement.label}</p>
+                        <p className="text-[11px] text-muted-foreground break-all">{placement.value}</p>
+                      </div>
+                      <span className={cn(
+                        "text-[10px] font-bold px-2 py-1 rounded-full shrink-0",
+                        placement.active ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-500"
+                      )}>
+                        {placement.active ? 'Active' : 'Off'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-xl border p-4 bg-gray-50">
+                  <p className="text-[11px] text-green-700">{SITE_URL}{productPath}</p>
+                  <p className="text-lg leading-tight text-blue-700 mt-1">{seoTitlePreview}</p>
+                  <p className="text-sm text-gray-700 mt-1">{seoDescriptionPreview}</p>
+                  <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {searchQuickLinks.map((link) => (
+                      <div key={link.label} className="rounded-lg border bg-white p-2">
+                        <p className="text-sm font-semibold text-gray-900">{link.label}</p>
+                        <p className="text-[11px] text-muted-foreground break-all">{link.href}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField control={form.control} name="category" render={({ field }) => (
