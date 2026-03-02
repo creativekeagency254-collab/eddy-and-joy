@@ -4,8 +4,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCollection, useFirestore, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, useFirebaseApp, addDocumentNonBlocking } from '@/firebase';
-import { collection, doc, serverTimestamp, query, orderBy, Timestamp } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useFirebaseApp } from '@/firebase';
+import { collection, query, orderBy, Timestamp } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { Product, Order } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -146,6 +146,7 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isStyleDialogOpen, setIsStyleDialogOpen] = useState(false);
   const [newStyleName, setNewStyleName] = useState('');
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [isSavingStyle, setIsSavingStyle] = useState(false);
   const [optimisticCategories, setOptimisticCategories] = useState<Category[]>([]);
@@ -326,39 +327,70 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
     }
   }, [editingProduct, form]);
 
-  const onSubmit = (data: ProductFormData) => {
-    if (!firestore) return;
-    
+  const onSubmit = async (data: ProductFormData) => {
     const images = [data.imageUrl1, data.imageUrl2, data.imageUrl3, data.imageUrl4]
         .filter((url): url is string => !!url)
         .map(url => ({ url, alt: data.name, hint: 'product image' }));
-    
-    const productData = {
-      ...data,
-      style: data.style || null,
-      originalPrice: data.originalPrice || null,
+
+    const productPayload = {
+      name: data.name.trim(),
+      slug: data.slug.trim(),
+      description: data.description.trim(),
+      category: data.category.trim(),
+      style: data.style?.trim() || null,
+      price: Number(data.price),
+      originalPrice: typeof data.originalPrice === 'number' ? Number(data.originalPrice) : null,
       images: images,
+      availableColors: data.availableColors || [],
+      sizes: data.sizes || [],
       isFeatured: data.isFeatured ?? false,
-      updatedAt: serverTimestamp(),
     };
 
-    if (editingProduct) {
-      updateDocumentNonBlocking(doc(firestore, 'products', editingProduct.id), productData);
-      toast({ title: 'Product Updated' });
-    } else {
-      addDocumentNonBlocking(collection(firestore, 'products'), { ...productData, createdAt: serverTimestamp() });
-      toast({ title: 'Product Added' });
+    setIsSavingProduct(true);
+    try {
+      const response = await fetch('/api/admin/products', {
+        method: editingProduct ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          editingProduct
+            ? { id: editingProduct.id, ...productPayload }
+            : productPayload
+        ),
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result?.message || 'Failed to save product.');
+      }
+
+      toast({ title: editingProduct ? 'Product Updated' : 'Product Added' });
+      setIsDialogOpen(false);
+      setEditingProduct(null);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Failed to save product.';
+      toast({ variant: 'destructive', title: 'Product Save Failed', description: message });
+    } finally {
+      setIsSavingProduct(false);
     }
-    
-    setIsDialogOpen(false);
-    setEditingProduct(null);
   };
   
-  const handleDelete = (productId: string) => {
-    if (!firestore) return;
+  const handleDelete = async (productId: string) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      deleteDocumentNonBlocking(doc(firestore, 'products', productId));
-      toast({ title: 'Product Deleted' });
+      try {
+        const response = await fetch('/api/admin/products', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: productId }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result?.message || 'Failed to delete product.');
+        }
+        toast({ title: 'Product Deleted' });
+      } catch (caught) {
+        const message = caught instanceof Error ? caught.message : 'Failed to delete product.';
+        toast({ variant: 'destructive', title: 'Delete Failed', description: message });
+      }
     }
   }
 
@@ -490,10 +522,22 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
     }
   };
   
-  const handleUpdateOrderStatus = (orderId: string, status: Order['status']) => {
-    if (!firestore) return;
-    updateDocumentNonBlocking(doc(firestore, 'orders', orderId), { status });
-    toast({ title: 'Order Status Updated' });
+  const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
+    try {
+      const response = await fetch('/api/admin/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: orderId, status }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result?.message || 'Failed to update order status.');
+      }
+      toast({ title: 'Order Status Updated' });
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Failed to update order status.';
+      toast({ variant: 'destructive', title: 'Status Update Failed', description: message });
+    }
   };
 
   return (
@@ -776,7 +820,9 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                 </FormItem>
               )}/>
 
-              <Button type="submit" size="lg" className="w-full rounded-2xl h-14 text-lg font-bold shadow-xl">{editingProduct ? 'Update Product' : 'Create Product'}</Button>
+              <Button type="submit" size="lg" className="w-full rounded-2xl h-14 text-lg font-bold shadow-xl" disabled={isSavingProduct}>
+                {isSavingProduct ? 'Saving...' : editingProduct ? 'Update Product' : 'Create Product'}
+              </Button>
             </form>
           </Form>
         </DialogContent>

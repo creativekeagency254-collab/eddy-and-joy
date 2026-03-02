@@ -855,7 +855,7 @@ export async function getDocs<T = DocumentData>(
       return new QuerySnapshot<T>(fallbackDocs);
     }
 
-    throw makeFirestoreError(error.message, error.code ?? 'firestore/query-failed');
+    throw makeFirestoreError(String(error.message ?? 'Query failed.'), error.code ?? 'firestore/query-failed');
   }
 
   let rows = Array.isArray(data) ? data : [];
@@ -897,7 +897,7 @@ async function getDocSnapshot<T = DocumentData>(docRef: DocumentReference<T>) {
       return new DocumentSnapshot<T>(docRef.id, null, false);
     }
 
-    throw makeFirestoreError(error.message, error.code ?? 'firestore/get-failed');
+    throw makeFirestoreError(String(error.message ?? 'Read failed.'), error.code ?? 'firestore/get-failed');
   }
 
   if (!data) {
