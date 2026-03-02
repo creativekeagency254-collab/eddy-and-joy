@@ -16,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { verifyPayment } from '@/ai/flows/verify-payment';
+import { useRouter } from 'next/navigation';
 
 const WhatsAppIcon = () => (
   <svg
@@ -58,6 +59,7 @@ function normalizePhoneInput(value: string) {
 
 function CheckoutDialog() {
   const { cart, cartTotal, clearCart, setOpen: setCartOpen } = useAppContext();
+  const router = useRouter();
   const [isCheckoutDialogOpen, setIsCheckoutDialogOpen] = React.useState(false);
   const [isVerifying, setIsVerifying] = React.useState(false);
   const [paymentSuccess, setPaymentSuccess] = React.useState(false);
@@ -108,7 +110,15 @@ function CheckoutDialog() {
           setCartOpen(false);
           setIsCheckoutDialogOpen(false);
           setPaymentSuccess(false);
-        }, 2000);
+          const query = new URLSearchParams({
+            source: 'cart',
+            amount: String(cartTotal),
+            orderId: result.orderId || '',
+            reference: String(reference?.reference || ''),
+            name: watchedName || '',
+          });
+          router.push(`/thank-you?${query.toString()}`);
+        }, 1200);
       } else {
         toast({ variant: "destructive", title: "Verification Failed", description: result.message });
       }

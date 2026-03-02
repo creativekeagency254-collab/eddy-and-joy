@@ -16,6 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { verifyPayment } from '@/ai/flows/verify-payment';
+import { useRouter } from 'next/navigation';
 
 interface ProductPurchaseFormProps {
   product: Product;
@@ -64,6 +65,7 @@ function normalizePhoneInput(value: string) {
 
 export default function ProductPurchaseForm({ product, selectedColor, setSelectedColor }: ProductPurchaseFormProps) {
   const { addToCart, toggleWishlist, isProductInWishlist } = useAppContext();
+  const router = useRouter();
   const [selectedSize, setSelectedSize] = useState('M');
   const [quantity, setQuantity] = useState(1);
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
@@ -117,7 +119,16 @@ export default function ProductPurchaseForm({ product, selectedColor, setSelecte
         setTimeout(() => {
           setIsAddressDialogOpen(false);
           setPaymentSuccess(false);
-        }, 2000);
+          const query = new URLSearchParams({
+            source: 'product',
+            amount: String(product.price * quantity),
+            orderId: result.orderId || '',
+            reference: String(reference?.reference || ''),
+            name: watchedName || '',
+            product: product.slug || product.name,
+          });
+          router.push(`/thank-you?${query.toString()}`);
+        }, 1200);
       } else {
         toast({ variant: "destructive", title: "Verification Failed", description: result.message });
       }
