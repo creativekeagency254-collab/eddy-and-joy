@@ -28,6 +28,8 @@ npm run dev
 
 The app runs on `http://localhost:3000`.
 
+Use `.env.example` as your template for local `.env.local` and for Vercel environment keys.
+
 ## Vercel Quick Setup
 
 1. Import this GitHub repo in Vercel.
