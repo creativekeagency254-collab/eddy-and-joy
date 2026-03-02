@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServiceClient } from '@/lib/supabase/server';
+import { getAdminSessionFromRequest } from '@/lib/admin-auth';
 
 const productSchema = z.object({
   name: z.string().min(1),
@@ -62,7 +63,11 @@ function makePayload(input: z.infer<typeof productSchema>) {
   };
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  if (!getAdminSessionFromRequest(request)) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const parsed = productSchema.safeParse(body);
@@ -94,7 +99,11 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
+  if (!getAdminSessionFromRequest(request)) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const parsed = updateSchema.safeParse(body);
@@ -125,7 +134,11 @@ export async function PATCH(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
+  if (!getAdminSessionFromRequest(request)) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const parsed = deleteSchema.safeParse(body);

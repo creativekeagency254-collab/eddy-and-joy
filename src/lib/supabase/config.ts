@@ -2,7 +2,16 @@ const DEFAULT_SUPABASE_URL = 'http://127.0.0.1:54321';
 const DEFAULT_PUBLIC_KEY = 'public-anon-key';
 
 export function getSupabaseUrl() {
-  return process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || DEFAULT_SUPABASE_URL;
+  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (envUrl) {
+    return envUrl;
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is required in production.');
+  }
+
+  return DEFAULT_SUPABASE_URL;
 }
 
 export function getSupabasePublicKey() {
@@ -14,12 +23,15 @@ export function getSupabasePublicKey() {
 }
 
 export function getSupabaseServiceKey() {
-  return (
+  const serviceKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    process.env.SUPABASE_SECRET_KEY?.trim() ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
-    DEFAULT_PUBLIC_KEY
-  );
+    process.env.SUPABASE_SECRET_KEY?.trim();
+
+  if (serviceKey) {
+    return serviceKey;
+  }
+
+  throw new Error('SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY) is required.');
 }
 
 export const SUPABASE_STORAGE_BUCKET =

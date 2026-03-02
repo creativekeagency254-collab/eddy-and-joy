@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils';
 
 const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const DEFAULT_CATEGORY_NAMES = ['Men', 'Women', 'Children', 'Unisex', 'Bags'];
-const DEFAULT_STYLE_NAMES = ['Classic'];
+const DEFAULT_STYLE_NAMES = ['Classic', 'Casual', 'Streetwear', 'Formal', 'Sport', 'Luxury'];
 
 const COLOR_PALETTE = [
   { name: 'Black', hex: '#000000' }, { name: 'White', hex: '#FFFFFF' }, { name: 'Stone', hex: '#A8A29E' },
@@ -215,6 +215,26 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
         'style'
       ),
     [styles, optimisticStyles, inferredStyleNames]
+  );
+  const categoryOptions = useMemo(
+    () =>
+      sortedCategories.length > 0
+        ? sortedCategories
+        : DEFAULT_CATEGORY_NAMES.map((name) => ({
+            id: `cat-${name.toLowerCase().replace(/\s+/g, '-')}`,
+            name,
+          })),
+    [sortedCategories]
+  );
+  const styleOptions = useMemo(
+    () =>
+      sortedStyles.length > 0
+        ? sortedStyles
+        : DEFAULT_STYLE_NAMES.map((name) => ({
+            id: `style-${name.toLowerCase().replace(/\s+/g, '-')}`,
+            name,
+          })),
+    [sortedStyles]
   );
 
   const form = useForm<ProductFormData>({
@@ -442,25 +462,22 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
       toast({ title: 'Category Added', description: `${newRecord.name} is now available.` });
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : 'Failed to add category.';
-      if (isNetworkErrorMessage(message)) {
-        const fallbackRecord: Category = {
-          id: `cat-local-${name.toLowerCase().replace(/\s+/g, '-')}`,
-          name,
-        };
-        setOptimisticCategories((current) => {
-          const normalized = fallbackRecord.name.trim().toLowerCase();
-          return [...current.filter((item) => item.name.trim().toLowerCase() !== normalized), fallbackRecord];
-        });
-        form.setValue('category', fallbackRecord.name, { shouldValidate: true });
-        setNewCategoryName('');
-        setIsCategoryDialogOpen(false);
-        toast({
-          title: 'Category Added Locally',
-          description: 'Network issue detected. Continue editing; it will still apply to product data.',
-        });
-      } else {
-        toast({ variant: 'destructive', title: 'Category Add Failed', description: message });
-      }
+      const fallbackRecord: Category = {
+        id: `cat-local-${name.toLowerCase().replace(/\s+/g, '-')}`,
+        name,
+      };
+      setOptimisticCategories((current) => {
+        const normalized = fallbackRecord.name.trim().toLowerCase();
+        return [...current.filter((item) => item.name.trim().toLowerCase() !== normalized), fallbackRecord];
+      });
+      form.setValue('category', fallbackRecord.name, { shouldValidate: true });
+      setNewCategoryName('');
+      setIsCategoryDialogOpen(false);
+      toast({
+        title: isNetworkErrorMessage(message) ? 'Category Added Locally' : 'Category Saved In Form',
+        description:
+          'Category is available immediately in this admin form and will be stored with the product.',
+      });
     } finally {
       setIsSavingCategory(false);
     }
@@ -498,25 +515,22 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
       toast({ title: 'Style Added', description: `${newRecord.name} is now available.` });
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : 'Failed to add style.';
-      if (isNetworkErrorMessage(message)) {
-        const fallbackRecord: Style = {
-          id: `style-local-${name.toLowerCase().replace(/\s+/g, '-')}`,
-          name,
-        };
-        setOptimisticStyles((current) => {
-          const normalized = fallbackRecord.name.trim().toLowerCase();
-          return [...current.filter((item) => item.name.trim().toLowerCase() !== normalized), fallbackRecord];
-        });
-        form.setValue('style', fallbackRecord.name, { shouldValidate: true });
-        setNewStyleName('');
-        setIsStyleDialogOpen(false);
-        toast({
-          title: 'Style Added Locally',
-          description: 'Network issue detected. Continue editing; it will still apply to product data.',
-        });
-      } else {
-        toast({ variant: 'destructive', title: 'Style Add Failed', description: message });
-      }
+      const fallbackRecord: Style = {
+        id: `style-local-${name.toLowerCase().replace(/\s+/g, '-')}`,
+        name,
+      };
+      setOptimisticStyles((current) => {
+        const normalized = fallbackRecord.name.trim().toLowerCase();
+        return [...current.filter((item) => item.name.trim().toLowerCase() !== normalized), fallbackRecord];
+      });
+      form.setValue('style', fallbackRecord.name, { shouldValidate: true });
+      setNewStyleName('');
+      setIsStyleDialogOpen(false);
+      toast({
+        title: isNetworkErrorMessage(message) ? 'Style Added Locally' : 'Style Saved In Form',
+        description:
+          'Style is available immediately in this admin form and will be stored with the product.',
+      });
     } finally {
       setIsSavingStyle(false);
     }
@@ -655,24 +669,26 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                       <FormLabel className="font-bold">Category</FormLabel>
                        <div className="flex gap-2">
                         <FormControl>
-                          <select
+                          <Input
+                            list="admin-category-options"
                             value={field.value || ''}
                             onChange={(e) => field.onChange(e.target.value)}
-                            className="flex h-10 w-full items-center rounded-xl border border-input bg-background px-3 py-2 text-sm"
-                          >
-                            <option value="" disabled>Select category</option>
-                            {sortedCategories.map((cat) => (
-                              <option key={cat.id} value={cat.name}>{cat.name}</option>
-                            ))}
-                          </select>
+                            placeholder="Select or type category"
+                            className="rounded-xl"
+                          />
                         </FormControl>
                         <Button type="button" variant="outline" size="icon" className="rounded-xl" onClick={() => setIsCategoryDialogOpen(true)}><PlusCircle className="h-4 w-4" /></Button>
                       </div>
+                      <datalist id="admin-category-options">
+                        {categoryOptions.map((cat) => (
+                          <option key={cat.id} value={cat.name} />
+                        ))}
+                      </datalist>
                       <p className="text-[11px] text-muted-foreground">
                         Main category pages: Men, Women, Children, Unisex, Bags.
                       </p>
                       <div className="flex flex-wrap gap-2 pt-2">
-                        {sortedCategories.map((cat) => (
+                        {categoryOptions.map((cat) => (
                           <button
                             key={`pick-cat-${cat.id}`}
                             type="button"
@@ -696,21 +712,23 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                       <FormLabel className="font-bold">Style</FormLabel>
                       <div className="flex gap-2">
                         <FormControl>
-                          <select
+                          <Input
+                            list="admin-style-options"
                             value={field.value || ''}
                             onChange={(e) => field.onChange(e.target.value)}
-                            className="flex h-10 w-full items-center rounded-xl border border-input bg-background px-3 py-2 text-sm"
-                          >
-                            <option value="">No style</option>
-                            {sortedStyles.map((sty) => (
-                              <option key={sty.id} value={sty.name}>{sty.name}</option>
-                            ))}
-                          </select>
+                            placeholder="Select, type, or leave empty"
+                            className="rounded-xl"
+                          />
                         </FormControl>
                         <Button type="button" variant="outline" size="icon" className="rounded-xl" onClick={() => setIsStyleDialogOpen(true)}><PlusCircle className="h-4 w-4" /></Button>
                       </div>
+                      <datalist id="admin-style-options">
+                        {styleOptions.map((sty) => (
+                          <option key={sty.id} value={sty.name} />
+                        ))}
+                      </datalist>
                       <div className="flex flex-wrap gap-2 pt-2">
-                        {sortedStyles.map((sty) => (
+                        {styleOptions.map((sty) => (
                           <button
                             key={`pick-style-${sty.id}`}
                             type="button"
@@ -964,8 +982,6 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
   );
 }
 
-const ADMIN_SESSION_KEY = 'eddyjoy_admin_session';
-
 export default function AdminDashboard() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -973,63 +989,77 @@ export default function AdminDashboard() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
-
-  const adminCredentials = useMemo(
-    () =>
-      [
-        {
-          email: (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@gmail.com').trim().toLowerCase(),
-          password: (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'Mmm@29315122').trim(),
-        },
-        {
-          email: (process.env.NEXT_PUBLIC_ADMIN_EMAIL_2 || 'joy@admin.com').trim().toLowerCase(),
-          password: (process.env.NEXT_PUBLIC_ADMIN_PASSWORD_2 || 'Eddj0s@24').trim(),
-        },
-      ].filter((credential) => credential.email && credential.password),
-    []
-  );
-
-  const adminEmails = useMemo(() => adminCredentials.map((credential) => credential.email), [adminCredentials]);
-  const authorizedEmailSet = useMemo(() => new Set(adminEmails), [adminEmails]);
+  const [adminEmails, setAdminEmails] = useState<string[]>(['admin@gmail.com', 'joy@admin.com']);
 
   useEffect(() => {
-    try {
-      const savedSession =
-        typeof window !== 'undefined' ? window.localStorage.getItem(ADMIN_SESSION_KEY) : null;
-      setIsAuthorized(!!savedSession && authorizedEmailSet.has(savedSession.trim().toLowerCase()));
-    } finally {
-      setIsCheckingSession(false);
-    }
-  }, [authorizedEmailSet]);
+    let isCancelled = false;
 
-  const handleLogin = (e: React.FormEvent) => {
+    const checkSession = async () => {
+      try {
+        const response = await fetch('/api/admin/auth', { cache: 'no-store' });
+        const result = await response.json().catch(() => ({}));
+        if (isCancelled) return;
+
+        setIsAuthorized(!!result?.authorized);
+        if (Array.isArray(result?.adminEmails) && result.adminEmails.length > 0) {
+          setAdminEmails(result.adminEmails);
+        }
+      } catch {
+        if (!isCancelled) {
+          setIsAuthorized(false);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsCheckingSession(false);
+        }
+      }
+    };
+
+    checkSession();
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoggingIn(true);
     setLoginError(null);
 
-    const normalizedEmail = email.trim().toLowerCase();
-    const matchedCredential = adminCredentials.find(
-      (credential) => normalizedEmail === credential.email && password === credential.password
-    );
+    try {
+      const response = await fetch('/api/admin/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
 
-    if (matchedCredential) {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(ADMIN_SESSION_KEY, matchedCredential.email);
+      if (!response.ok) {
+        throw new Error(result?.message || 'Login failed. Check your credentials.');
       }
+
       setIsAuthorized(true);
       setEmail('');
       setPassword('');
+      if (Array.isArray(result?.adminEmails) && result.adminEmails.length > 0) {
+        setAdminEmails(result.adminEmails);
+      }
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Login failed. Check your credentials.';
+      setLoginError(message);
+    } finally {
       setIsLoggingIn(false);
-      return;
     }
-
-    setLoginError('Login failed. Check your credentials.');
-    setIsLoggingIn(false);
   };
 
-  const handleLogout = () => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(ADMIN_SESSION_KEY);
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin/auth', { method: 'DELETE' });
+    } catch {
+      // No-op: local state is still cleared.
     }
     setIsAuthorized(false);
     setLoginError(null);

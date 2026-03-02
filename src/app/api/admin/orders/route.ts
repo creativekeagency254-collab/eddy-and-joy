@@ -1,13 +1,18 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getSupabaseServiceClient } from '@/lib/supabase/server';
+import { getAdminSessionFromRequest } from '@/lib/admin-auth';
 
 const updateOrderSchema = z.object({
   id: z.string().min(1),
   status: z.enum(['pending', 'shipped', 'delivered', 'cancelled']),
 });
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
+  if (!getAdminSessionFromRequest(request)) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
     const parsed = updateOrderSchema.safeParse(body);
