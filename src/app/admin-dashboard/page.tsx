@@ -526,15 +526,21 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                     <FormItem>
                       <FormLabel className="font-bold">Category</FormLabel>
                        <div className="flex gap-2">
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Category" /></SelectTrigger></FormControl>
-                          <SelectContent>
+                        <FormControl>
+                          <select
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            className="flex h-10 w-full items-center rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                          >
+                            <option value="" disabled>Select category</option>
                             {sortedCategories.length === 0 && (
-                              <SelectItem value="__no_categories__" disabled>No categories yet</SelectItem>
+                              <option value="" disabled>No categories yet</option>
                             )}
-                            {sortedCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                            {sortedCategories.map((cat) => (
+                              <option key={cat.id} value={cat.name}>{cat.name}</option>
+                            ))}
+                          </select>
+                        </FormControl>
                         <Button type="button" variant="outline" size="icon" className="rounded-xl" onClick={() => setIsCategoryDialogOpen(true)}><PlusCircle className="h-4 w-4" /></Button>
                       </div>
                       <FormMessage />
@@ -544,15 +550,21 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                     <FormItem>
                       <FormLabel className="font-bold">Style</FormLabel>
                       <div className="flex gap-2">
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Style" /></SelectTrigger></FormControl>
-                          <SelectContent>
+                        <FormControl>
+                          <select
+                            value={field.value || ''}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            className="flex h-10 w-full items-center rounded-xl border border-input bg-background px-3 py-2 text-sm"
+                          >
+                            <option value="">No style</option>
                             {sortedStyles.length === 0 && (
-                              <SelectItem value="__no_styles__" disabled>No styles yet</SelectItem>
+                              <option value="" disabled>No styles yet</option>
                             )}
-                            {sortedStyles.map(sty => <SelectItem key={sty.id} value={sty.name}>{sty.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
+                            {sortedStyles.map((sty) => (
+                              <option key={sty.id} value={sty.name}>{sty.name}</option>
+                            ))}
+                          </select>
+                        </FormControl>
                         <Button type="button" variant="outline" size="icon" className="rounded-xl" onClick={() => setIsStyleDialogOpen(true)}><PlusCircle className="h-4 w-4" /></Button>
                       </div>
                       <FormMessage />
