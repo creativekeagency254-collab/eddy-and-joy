@@ -526,22 +526,30 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                     <FormItem>
                       <FormLabel className="font-bold">Category</FormLabel>
                        <div className="flex gap-2">
-                        <FormControl>
-                          <select
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(e.target.value)}
-                            className="flex h-10 w-full items-center rounded-xl border border-input bg-background px-3 py-2 text-sm"
-                          >
-                            <option value="" disabled>Select category</option>
-                            {sortedCategories.length === 0 && (
-                              <option value="" disabled>No categories yet</option>
-                            )}
-                            {sortedCategories.map((cat) => (
-                              <option key={cat.id} value={cat.name}>{cat.name}</option>
-                            ))}
-                          </select>
-                        </FormControl>
+                        <FormControl><Input {...field} value={field.value || ''} placeholder="Category" list="admin-category-options" className="rounded-xl" /></FormControl>
                         <Button type="button" variant="outline" size="icon" className="rounded-xl" onClick={() => setIsCategoryDialogOpen(true)}><PlusCircle className="h-4 w-4" /></Button>
+                      </div>
+                      <datalist id="admin-category-options">
+                        {sortedCategories.map((cat) => (
+                          <option key={cat.id} value={cat.name} />
+                        ))}
+                      </datalist>
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {sortedCategories.map((cat) => (
+                          <button
+                            key={`pick-cat-${cat.id}`}
+                            type="button"
+                            onClick={() => field.onChange(cat.name)}
+                            className={cn(
+                              "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                              (field.value || '').trim().toLowerCase() === cat.name.trim().toLowerCase()
+                                ? "bg-black text-white border-black"
+                                : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                            )}
+                          >
+                            {cat.name}
+                          </button>
+                        ))}
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -550,22 +558,30 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                     <FormItem>
                       <FormLabel className="font-bold">Style</FormLabel>
                       <div className="flex gap-2">
-                        <FormControl>
-                          <select
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(e.target.value)}
-                            className="flex h-10 w-full items-center rounded-xl border border-input bg-background px-3 py-2 text-sm"
-                          >
-                            <option value="">No style</option>
-                            {sortedStyles.length === 0 && (
-                              <option value="" disabled>No styles yet</option>
-                            )}
-                            {sortedStyles.map((sty) => (
-                              <option key={sty.id} value={sty.name}>{sty.name}</option>
-                            ))}
-                          </select>
-                        </FormControl>
+                        <FormControl><Input {...field} value={field.value || ''} placeholder="Style" list="admin-style-options" className="rounded-xl" /></FormControl>
                         <Button type="button" variant="outline" size="icon" className="rounded-xl" onClick={() => setIsStyleDialogOpen(true)}><PlusCircle className="h-4 w-4" /></Button>
+                      </div>
+                      <datalist id="admin-style-options">
+                        {sortedStyles.map((sty) => (
+                          <option key={sty.id} value={sty.name} />
+                        ))}
+                      </datalist>
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {sortedStyles.map((sty) => (
+                          <button
+                            key={`pick-style-${sty.id}`}
+                            type="button"
+                            onClick={() => field.onChange(sty.name)}
+                            className={cn(
+                              "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
+                              (field.value || '').trim().toLowerCase() === sty.name.trim().toLowerCase()
+                                ? "bg-black text-white border-black"
+                                : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                            )}
+                          >
+                            {sty.name}
+                          </button>
+                        ))}
                       </div>
                       <FormMessage />
                     </FormItem>
