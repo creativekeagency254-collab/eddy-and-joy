@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import ProductCard from '@/components/product/product-card';
@@ -14,6 +15,7 @@ import type { Product } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Home() {
+  const [hasHydrated, setHasHydrated] = useState(false);
   const heroImage = PlaceHolderImages.find(p => p.id === 'nextgen-hero');
   const categories = homepageCategories;
   const promoImage1 = PlaceHolderImages.find(p => p.id === 'cat-bag');
@@ -25,6 +27,11 @@ export default function Home() {
     [firestore]
   );
   const { data: products, isLoading } = useCollection<Product>(productsQuery);
+  const showFeaturedSkeleton = !hasHydrated || isLoading;
+
+  useEffect(() => {
+    setHasHydrated(true);
+  }, []);
 
   return (
     <>
@@ -130,8 +137,10 @@ export default function Home() {
 
       <h2 className="mt-8 mb-4 text-xl font-semibold">Featured Products</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mt-6">
-        {isLoading && Array.from({ length: 1 }).map((_, i) => <Skeleton key={i} className="h-[400px] rounded-2xl" />)}
-        {products?.map((product) => (
+        {showFeaturedSkeleton && Array.from({ length: 1 }).map((_, i) => (
+          <Skeleton key={i} className="h-[400px] rounded-2xl" />
+        ))}
+        {!showFeaturedSkeleton && products?.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
       </div>
