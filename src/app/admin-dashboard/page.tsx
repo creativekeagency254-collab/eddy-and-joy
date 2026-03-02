@@ -95,6 +95,18 @@ function mergeNamedOptions<T extends { id: string; name: string }>(
   return Array.from(bucket.values()).sort((a, b) => a.name.localeCompare(b.name));
 }
 
+function isNetworkErrorMessage(message: string) {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('failed to fetch') ||
+    normalized.includes('network error') ||
+    normalized.includes('network request failed') ||
+    normalized.includes('fetch failed') ||
+    normalized.includes('timeout') ||
+    normalized.includes('connection')
+  );
+}
+
 function getCategoryPath(category: string) {
   const normalized = category.trim().toLowerCase();
   if (!normalized) return '/';
@@ -159,13 +171,49 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
     }, { totalSales: 0, pendingOrders: 0, totalRevenue: 0 });
   }, [orders]);
 
+  const inferredCategoryNames = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (products || [])
+            .map((product) => product.category?.trim())
+            .filter((name): name is string => !!name)
+        )
+      ),
+    [products]
+  );
+
+  const inferredStyleNames = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (products || [])
+            .map((product) => product.style?.trim())
+            .filter((name): name is string => !!name)
+        )
+      ),
+    [products]
+  );
+
   const sortedCategories = useMemo(
-    () => mergeNamedOptions<Category>(categories || undefined, optimisticCategories, DEFAULT_CATEGORY_NAMES, 'cat'),
-    [categories, optimisticCategories]
+    () =>
+      mergeNamedOptions<Category>(
+        categories || undefined,
+        optimisticCategories,
+        [...DEFAULT_CATEGORY_NAMES, ...inferredCategoryNames],
+        'cat'
+      ),
+    [categories, optimisticCategories, inferredCategoryNames]
   );
   const sortedStyles = useMemo(
-    () => mergeNamedOptions<Style>(styles || undefined, optimisticStyles, DEFAULT_STYLE_NAMES, 'style'),
-    [styles, optimisticStyles]
+    () =>
+      mergeNamedOptions<Style>(
+        styles || undefined,
+        optimisticStyles,
+        [...DEFAULT_STYLE_NAMES, ...inferredStyleNames],
+        'style'
+      ),
+    [styles, optimisticStyles, inferredStyleNames]
   );
 
   const form = useForm<ProductFormData>({
@@ -362,7 +410,25 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
       toast({ title: 'Category Added', description: `${newRecord.name} is now available.` });
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : 'Failed to add category.';
-      toast({ variant: 'destructive', title: 'Category Add Failed', description: message });
+      if (isNetworkErrorMessage(message)) {
+        const fallbackRecord: Category = {
+          id: `cat-local-${name.toLowerCase().replace(/\s+/g, '-')}`,
+          name,
+        };
+        setOptimisticCategories((current) => {
+          const normalized = fallbackRecord.name.trim().toLowerCase();
+          return [...current.filter((item) => item.name.trim().toLowerCase() !== normalized), fallbackRecord];
+        });
+        form.setValue('category', fallbackRecord.name, { shouldValidate: true });
+        setNewCategoryName('');
+        setIsCategoryDialogOpen(false);
+        toast({
+          title: 'Category Added Locally',
+          description: 'Network issue detected. Continue editing; it will still apply to product data.',
+        });
+      } else {
+        toast({ variant: 'destructive', title: 'Category Add Failed', description: message });
+      }
     } finally {
       setIsSavingCategory(false);
     }
@@ -400,7 +466,25 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
       toast({ title: 'Style Added', description: `${newRecord.name} is now available.` });
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : 'Failed to add style.';
-      toast({ variant: 'destructive', title: 'Style Add Failed', description: message });
+      if (isNetworkErrorMessage(message)) {
+        const fallbackRecord: Style = {
+          id: `style-local-${name.toLowerCase().replace(/\s+/g, '-')}`,
+          name,
+        };
+        setOptimisticStyles((current) => {
+          const normalized = fallbackRecord.name.trim().toLowerCase();
+          return [...current.filter((item) => item.name.trim().toLowerCase() !== normalized), fallbackRecord];
+        });
+        form.setValue('style', fallbackRecord.name, { shouldValidate: true });
+        setNewStyleName('');
+        setIsStyleDialogOpen(false);
+        toast({
+          title: 'Style Added Locally',
+          description: 'Network issue detected. Continue editing; it will still apply to product data.',
+        });
+      } else {
+        toast({ variant: 'destructive', title: 'Style Add Failed', description: message });
+      }
     } finally {
       setIsSavingStyle(false);
     }
