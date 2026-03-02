@@ -678,18 +678,33 @@ export default function AdminDashboard() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
 
-  const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@gmail.com').trim().toLowerCase();
-  const ADMIN_PASSWORD = (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'Mmm@29315122').trim();
+  const adminCredentials = useMemo(
+    () =>
+      [
+        {
+          email: (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@gmail.com').trim().toLowerCase(),
+          password: (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'Mmm@29315122').trim(),
+        },
+        {
+          email: (process.env.NEXT_PUBLIC_ADMIN_EMAIL_2 || 'joy@admin.com').trim().toLowerCase(),
+          password: (process.env.NEXT_PUBLIC_ADMIN_PASSWORD_2 || 'Eddj0s@24').trim(),
+        },
+      ].filter((credential) => credential.email && credential.password),
+    []
+  );
+
+  const adminEmails = useMemo(() => adminCredentials.map((credential) => credential.email), [adminCredentials]);
+  const authorizedEmailSet = useMemo(() => new Set(adminEmails), [adminEmails]);
 
   useEffect(() => {
     try {
       const savedSession =
         typeof window !== 'undefined' ? window.localStorage.getItem(ADMIN_SESSION_KEY) : null;
-      setIsAuthorized(savedSession === ADMIN_EMAIL);
+      setIsAuthorized(!!savedSession && authorizedEmailSet.has(savedSession.trim().toLowerCase()));
     } finally {
       setIsCheckingSession(false);
     }
-  }, [ADMIN_EMAIL]);
+  }, [authorizedEmailSet]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -697,12 +712,13 @@ export default function AdminDashboard() {
     setLoginError(null);
 
     const normalizedEmail = email.trim().toLowerCase();
-    const isEmailMatch = normalizedEmail === ADMIN_EMAIL;
-    const isPasswordMatch = password === ADMIN_PASSWORD;
+    const matchedCredential = adminCredentials.find(
+      (credential) => normalizedEmail === credential.email && password === credential.password
+    );
 
-    if (isEmailMatch && isPasswordMatch) {
+    if (matchedCredential) {
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem(ADMIN_SESSION_KEY, ADMIN_EMAIL);
+        window.localStorage.setItem(ADMIN_SESSION_KEY, matchedCredential.email);
       }
       setIsAuthorized(true);
       setEmail('');
@@ -781,7 +797,7 @@ export default function AdminDashboard() {
             <p className="font-black text-black mb-1 uppercase tracking-widest">Configuration Status:</p>
             <ul className="space-y-1">
               <li className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-green-500"></div> Login Mode: Admin Credentials</li>
-              <li className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-green-500"></div> Target Email: {ADMIN_EMAIL}</li>
+              <li className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-green-500"></div> Target Emails: {adminEmails.join(', ')}</li>
               <li className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div> Entry Point: Bags section admin button</li>
             </ul>
           </div>
