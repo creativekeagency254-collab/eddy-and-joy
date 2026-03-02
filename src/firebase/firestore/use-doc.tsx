@@ -22,6 +22,18 @@ export interface UseDocResult<T> {
   error: FirestoreError | Error | null; // Error object, or null.
 }
 
+function isRecoverableReadErrorMessage(message: string) {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('missing or insufficient permissions') ||
+    normalized.includes('permission denied') ||
+    normalized.includes('insufficient permissions') ||
+    normalized.includes('supabase read denied') ||
+    normalized.includes('supabase table') ||
+    normalized.includes('schema cache')
+  );
+}
+
 /**
  * React hook to subscribe to a single Firestore document in real-time.
  * Handles nullable references.
@@ -70,10 +82,20 @@ export function useDoc<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
-        console.error(`Document read failed at '${memoizedDocRef.path}':`, error);
-        setError(error)
-        setData(null)
-        setIsLoading(false)
+        const message = error?.message ?? String(error);
+
+        if (isRecoverableReadErrorMessage(message)) {
+          console.warn(`Document read fallback at '${memoizedDocRef.path}': ${message}`);
+          setError(null);
+          setData(null);
+          setIsLoading(false);
+          return;
+        }
+
+        console.error(`Document read failed at '${memoizedDocRef.path}': ${message}`);
+        setError(error);
+        setData(null);
+        setIsLoading(false);
       }
     );
 

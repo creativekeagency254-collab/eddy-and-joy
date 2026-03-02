@@ -9,6 +9,7 @@ export type OrderByDirection = 'asc' | 'desc';
 const SERVER_TIMESTAMP_TOKEN = '__firestore_server_timestamp__';
 const FALLBACK_IMAGE_URL = 'https://i.postimg.cc/zXbR1f2f/download-(6).jpg';
 const FALLBACK_STYLE = 'Classic';
+const recoverableReadWarnings = new Set<string>();
 
 const FALLBACK_PRODUCTS: DocumentData[] = [
   {
@@ -245,6 +246,15 @@ function makeFirestoreError(message: string, code = 'firestore/unknown') {
   return new FirestoreError(message, code);
 }
 
+function warnRecoverableRead(message: string) {
+  if (recoverableReadWarnings.has(message)) {
+    return;
+  }
+
+  recoverableReadWarnings.add(message);
+  console.warn(message);
+}
+
 function isMissingTableError(error: { code?: string; message?: string } | null | undefined) {
   if (!error) {
     return false;
@@ -258,8 +268,37 @@ function isMissingTableError(error: { code?: string; message?: string } | null |
   );
 }
 
+function isPermissionDeniedError(error: { code?: string; message?: string } | null | undefined) {
+  if (!error) {
+    return false;
+  }
+
+  const code = String(error.code ?? '').toUpperCase();
+  const message = String(error.message ?? '').toLowerCase();
+
+  if (code === '42501' || code === '401' || code === '403' || code === 'PGRST301' || code === 'PGRST302') {
+    return true;
+  }
+
+  return (
+    message.includes('permission denied') ||
+    message.includes('insufficient permissions') ||
+    message.includes('forbidden') ||
+    message.includes('not authorized') ||
+    message.includes('invalid jwt')
+  );
+}
+
+function isRecoverableReadError(error: { code?: string; message?: string } | null | undefined) {
+  return isMissingTableError(error) || isPermissionDeniedError(error);
+}
+
 function makeMissingTableMessage(table: string) {
   return `Supabase table '${table}' is missing. Run docs/supabase-setup.sql in your Supabase SQL editor.`;
+}
+
+function makePermissionDeniedMessage(table: string) {
+  return `Supabase read denied for table '${table}'. Check RLS select policies and API keys.`;
 }
 
 function getFallbackRowsForTable(table: string): DocumentData[] {
@@ -759,8 +798,12 @@ export async function getDocs<T = DocumentData>(
   const { data, error } = await builder;
 
   if (error) {
-    if (isMissingTableError(error)) {
-      console.warn(makeMissingTableMessage(queryValue.__table));
+    if (isRecoverableReadError(error)) {
+      warnRecoverableRead(
+        isMissingTableError(error)
+          ? makeMissingTableMessage(queryValue.__table)
+          : makePermissionDeniedMessage(queryValue.__table)
+      );
       const fallbackRows = runFallbackQuery(queryValue as Query<DocumentData>);
       const fallbackDocs = fallbackRows.map((row, index) => {
         const id = resolveDocumentId(row, `${queryValue.__table}-fallback-${index}`);
@@ -797,8 +840,12 @@ async function getDocSnapshot<T = DocumentData>(docRef: DocumentReference<T>) {
   const { data, error } = await builder.maybeSingle();
 
   if (error) {
-    if (isMissingTableError(error)) {
-      console.warn(makeMissingTableMessage(docRef.__table));
+    if (isRecoverableReadError(error)) {
+      warnRecoverableRead(
+        isMissingTableError(error)
+          ? makeMissingTableMessage(docRef.__table)
+          : makePermissionDeniedMessage(docRef.__table)
+      );
       return new DocumentSnapshot<T>(docRef.id, null, false);
     }
 

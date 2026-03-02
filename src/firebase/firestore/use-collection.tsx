@@ -35,6 +35,18 @@ export interface InternalQuery extends Query<DocumentData> {
   }
 }
 
+function isRecoverableReadErrorMessage(message: string) {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('missing or insufficient permissions') ||
+    normalized.includes('permission denied') ||
+    normalized.includes('insufficient permissions') ||
+    normalized.includes('supabase read denied') ||
+    normalized.includes('supabase table') ||
+    normalized.includes('schema cache')
+  );
+}
+
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
  * Handles nullable references/queries.
@@ -88,10 +100,20 @@ export function useCollection<T = any>(
             ? (memoizedTargetRefOrQuery as CollectionReference).path
             : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
 
-        console.error(`Collection read failed at '${path}':`, error);
-        setError(error)
-        setData(null)
-        setIsLoading(false)
+        const message = error?.message ?? String(error);
+
+        if (isRecoverableReadErrorMessage(message)) {
+          console.warn(`Collection read fallback at '${path}': ${message}`);
+          setError(null);
+          setData([]);
+          setIsLoading(false);
+          return;
+        }
+
+        console.error(`Collection read failed at '${path}': ${message}`);
+        setError(error);
+        setData(null);
+        setIsLoading(false);
       }
     );
 
