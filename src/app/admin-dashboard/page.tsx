@@ -615,11 +615,12 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                 <TableHead className="font-bold text-black uppercase tracking-tighter">Delivery Address</TableHead>
                 <TableHead className="font-bold text-black uppercase tracking-tighter">Items Ordered</TableHead>
                 <TableHead className="font-bold text-black uppercase tracking-tighter">Total</TableHead>
+                <TableHead className="font-bold text-black uppercase tracking-tighter">Payment</TableHead>
                 <TableHead className="font-bold text-black uppercase tracking-tighter text-right">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoadingOrders && <TableRow><TableCell colSpan={6} className="text-center h-32">Loading orders...</TableCell></TableRow>}
+              {isLoadingOrders && <TableRow><TableCell colSpan={7} className="text-center h-32">Loading orders...</TableCell></TableRow>}
               {orders?.map(order => (
                 <TableRow key={order.id} className="hover:bg-gray-50/50">
                   <TableCell className="whitespace-nowrap font-medium">{order.createdAt ? format((order.createdAt as Timestamp).toDate(), 'PP') : 'N/A'}</TableCell>
@@ -646,6 +647,21 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                     </div>
                   </TableCell>
                   <TableCell className="font-black text-lg">Ksh {order.totalAmount.toLocaleString()}</TableCell>
+                  <TableCell>
+                    <div className="text-xs space-y-1">
+                      <div className={cn(
+                        "inline-flex items-center rounded-full px-2 py-1 font-bold uppercase tracking-wide",
+                        order.paymentStatus === 'success'
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-600"
+                      )}>
+                        {order.paymentStatus || 'recorded'}
+                      </div>
+                      <div className="text-muted-foreground break-all">
+                        {order.paymentReference || 'N/A'}
+                      </div>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     <Select value={order.status} onValueChange={(s) => handleUpdateOrderStatus(order.id, s as any)}>
                       <SelectTrigger className="w-[120px] h-9 text-xs ml-auto rounded-full font-bold border-2"><SelectValue /></SelectTrigger>
@@ -659,7 +675,7 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoadingOrders && orders?.length === 0 && <TableRow><TableCell colSpan={6} className="text-center h-32 text-muted-foreground">No orders recorded yet.</TableCell></TableRow>}
+              {!isLoadingOrders && orders?.length === 0 && <TableRow><TableCell colSpan={7} className="text-center h-32 text-muted-foreground">No orders recorded yet.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>

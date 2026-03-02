@@ -15,6 +15,9 @@ Set these environment variables before running locally or deploying.
 | `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | Paystack Dashboard |
 | `PAYSTACK_SECRET_KEY` | Paystack Dashboard |
 | `NEXT_PUBLIC_ADMIN_EMAIL` | Admin email used for dashboard access |
+| `NEXT_PUBLIC_ADMIN_PASSWORD` | Admin password used for dashboard access |
+| `NEXT_PUBLIC_ADMIN_EMAIL_2` | Optional second admin email |
+| `NEXT_PUBLIC_ADMIN_PASSWORD_2` | Optional second admin password |
 
 ## Local Run
 
@@ -24,3 +27,18 @@ npm run dev
 ```
 
 The app runs on `http://localhost:3000`.
+
+## Vercel Quick Setup
+
+1. Import this GitHub repo in Vercel.
+2. Add all environment variables above to Vercel Project Settings.
+3. In Supabase SQL Editor, run [`docs/supabase-setup.sql`](docs/supabase-setup.sql).
+4. Deploy from the latest `main` branch commit.
+
+## Payment Records
+
+Successful Paystack verification stores orders in Supabase `orders` with customer fields and payment audit fields:
+- `paymentReference`
+- `paymentStatus`
+- `paymentProvider`
+- `paidAt`

@@ -48,6 +48,10 @@ export type Order = {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
+  paymentReference?: string;
+  paymentStatus?: string;
+  paymentProvider?: string;
+  paidAt?: Timestamp | string;
 };
 
 export type WithId<T> = T & { id: string };

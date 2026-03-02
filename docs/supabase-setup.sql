@@ -40,8 +40,17 @@ create table if not exists public.orders (
   "createdAt" timestamptz not null default now(),
   "customerName" text not null default '',
   "customerEmail" text,
-  "customerPhone" text
+  "customerPhone" text,
+  "paymentReference" text,
+  "paymentStatus" text,
+  "paymentProvider" text,
+  "paidAt" timestamptz
 );
+
+alter table public.orders add column if not exists "paymentReference" text;
+alter table public.orders add column if not exists "paymentStatus" text;
+alter table public.orders add column if not exists "paymentProvider" text;
+alter table public.orders add column if not exists "paidAt" timestamptz;
 
 create table if not exists public.reviews (
   id text primary key default gen_random_uuid()::text,
@@ -54,6 +63,7 @@ create table if not exists public.reviews (
 
 create index if not exists reviews_product_id_idx on public.reviews ("productId");
 create index if not exists reviews_created_at_idx on public.reviews ("createdAt" desc);
+create index if not exists orders_payment_reference_idx on public.orders ("paymentReference");
 
 alter table public.products enable row level security;
 alter table public.categories enable row level security;

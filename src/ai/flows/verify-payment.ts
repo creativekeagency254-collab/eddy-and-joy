@@ -86,10 +86,20 @@ const verifyPaymentFlow = ai.defineFlow(
         }
         
         const customerEmail = data.data.customer?.email || 'N/A';
+        const paymentReference = String(reference || '');
+        const paymentStatus = String(data.data.status || 'success');
+        const paymentProvider = 'paystack';
+        const paidAt = data.data.paid_at || new Date().toISOString();
 
         // Record the order ONLY after successful payment verification
         const { products, totalAmount, shippingAddress, customerName, customerPhone } = orderPayload;
-        const orderData: Omit<Order, 'id' | 'createdAt'> & { createdAt: string } = {
+        const orderData: Omit<Order, 'id' | 'createdAt'> & {
+          createdAt: string;
+          paymentReference?: string;
+          paymentStatus?: string;
+          paymentProvider?: string;
+          paidAt?: string;
+        } = {
           products,
           totalAmount,
           shippingAddress,
@@ -98,29 +108,58 @@ const verifyPaymentFlow = ai.defineFlow(
           customerEmail,
           status: 'pending',
           createdAt: new Date().toISOString(),
+          paymentReference,
+          paymentStatus,
+          paymentProvider,
+          paidAt,
         };
 
         const supabase = getSupabaseServiceClient();
-        const { data: insertedOrder, error: insertError } = await supabase
+        let { data: insertedOrder, error: insertError } = await supabase
           .from('orders')
           .insert(orderData)
           .select('id')
           .single();
 
-        if (insertError) {
-          console.error('ORDER_INSERT_ERROR:', insertError.message);
+        // Backward compatible fallback for older schemas without payment audit columns.
+        if (
+          insertError &&
+          /(column .* does not exist|schema cache)/i.test(insertError.message || '')
+        ) {
+          const {
+            paymentReference: _paymentReference,
+            paymentStatus: _paymentStatus,
+            paymentProvider: _paymentProvider,
+            paidAt: _paidAt,
+            ...legacyOrderData
+          } = orderData;
+
+          const retryResult = await supabase
+            .from('orders')
+            .insert(legacyOrderData)
+            .select('id')
+            .single();
+
+          insertedOrder = retryResult.data;
+          insertError = retryResult.error;
+        }
+
+        if (insertError || !insertedOrder?.id) {
+          console.error('ORDER_INSERT_ERROR:', insertError?.message || 'Missing inserted order id');
           return {
             success: false,
             message: 'Payment verified but failed to record order.',
           };
         }
 
-        console.log(`ORDER_SUCCESS: Created order ${insertedOrder.id} for ${customerName}`);
+        const insertedOrderId = String(insertedOrder.id);
+
+        console.log(`ORDER_SUCCESS: Created order ${insertedOrderId} for ${customerName}`);
 
         return {
           success: true,
           message: 'Payment verified and order recorded.',
-          orderId: String(insertedOrder.id),
+          orderId: insertedOrderId,
         };
       } else {
         console.warn(`PAYMENT_FAILED: Paystack status: ${data?.data?.status}`);
