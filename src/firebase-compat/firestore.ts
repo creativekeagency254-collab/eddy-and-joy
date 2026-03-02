@@ -7,6 +7,101 @@ export type WhereFilterOp = '==' | '!=' | '<' | '<=' | '>' | '>=';
 export type OrderByDirection = 'asc' | 'desc';
 
 const SERVER_TIMESTAMP_TOKEN = '__firestore_server_timestamp__';
+const FALLBACK_IMAGE_URL = 'https://i.postimg.cc/zXbR1f2f/download-(6).jpg';
+const FALLBACK_STYLE = 'Classic';
+
+const FALLBACK_PRODUCTS: DocumentData[] = [
+  {
+    id: 'prod-men-001',
+    slug: 'men-essential-fit',
+    name: 'Men Essential Fit',
+    description: 'Minimal everyday fit for men.',
+    category: 'Men',
+    style: FALLBACK_STYLE,
+    price: 3200,
+    originalPrice: null,
+    isFeatured: false,
+    images: [{ url: FALLBACK_IMAGE_URL, alt: 'Men Essential Fit', hint: 'fashion product' }],
+    availableColors: [{ name: 'Black', hex: '#000000' }],
+    sizes: ['M', 'L', 'XL'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'prod-women-001',
+    slug: 'women-essential-fit',
+    name: 'Women Essential Fit',
+    description: 'Minimal everyday fit for women.',
+    category: 'Women',
+    style: FALLBACK_STYLE,
+    price: 3200,
+    originalPrice: null,
+    isFeatured: true,
+    images: [{ url: FALLBACK_IMAGE_URL, alt: 'Women Essential Fit', hint: 'fashion product' }],
+    availableColors: [{ name: 'Black', hex: '#000000' }],
+    sizes: ['S', 'M', 'L'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'prod-children-001',
+    slug: 'children-essential-fit',
+    name: 'Children Essential Fit',
+    description: 'Minimal everyday fit for children.',
+    category: 'Children',
+    style: FALLBACK_STYLE,
+    price: 2800,
+    originalPrice: null,
+    isFeatured: false,
+    images: [{ url: FALLBACK_IMAGE_URL, alt: 'Children Essential Fit', hint: 'fashion product' }],
+    availableColors: [{ name: 'Black', hex: '#000000' }],
+    sizes: ['XS', 'S', 'M'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'prod-unisex-001',
+    slug: 'unisex-essential-fit',
+    name: 'Unisex Essential Fit',
+    description: 'Minimal everyday unisex fit.',
+    category: 'Unisex',
+    style: FALLBACK_STYLE,
+    price: 3000,
+    originalPrice: null,
+    isFeatured: false,
+    images: [{ url: FALLBACK_IMAGE_URL, alt: 'Unisex Essential Fit', hint: 'fashion product' }],
+    availableColors: [{ name: 'Black', hex: '#000000' }],
+    sizes: ['S', 'M', 'L'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'prod-bags-001',
+    slug: 'bag-essential-carry',
+    name: 'Bag Essential Carry',
+    description: 'Minimal everyday bag.',
+    category: 'Bags',
+    style: FALLBACK_STYLE,
+    price: 3500,
+    originalPrice: null,
+    isFeatured: false,
+    images: [{ url: FALLBACK_IMAGE_URL, alt: 'Bag Essential Carry', hint: 'fashion bag' }],
+    availableColors: [{ name: 'Black', hex: '#000000' }],
+    sizes: ['M'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+const FALLBACK_CATEGORIES: DocumentData[] = [
+  { id: 'cat-men', name: 'Men' },
+  { id: 'cat-women', name: 'Women' },
+  { id: 'cat-children', name: 'Children' },
+  { id: 'cat-unisex', name: 'Unisex' },
+  { id: 'cat-bags', name: 'Bags' },
+];
+
+const FALLBACK_STYLES: DocumentData[] = [{ id: 'style-classic', name: FALLBACK_STYLE }];
 
 function toPathObject(path: string) {
   return {
@@ -165,6 +260,94 @@ function isMissingTableError(error: { code?: string; message?: string } | null |
 
 function makeMissingTableMessage(table: string) {
   return `Supabase table '${table}' is missing. Run docs/supabase-setup.sql in your Supabase SQL editor.`;
+}
+
+function getFallbackRowsForTable(table: string): DocumentData[] {
+  if (table === 'products') {
+    return [...FALLBACK_PRODUCTS];
+  }
+
+  if (table === 'categories') {
+    return [...FALLBACK_CATEGORIES];
+  }
+
+  if (table === 'styles') {
+    return [...FALLBACK_STYLES];
+  }
+
+  return [];
+}
+
+function compareValues(a: unknown, b: unknown, op: WhereFilterOp) {
+  const left = toComparableValue(a);
+  const right = toComparableValue(b);
+
+  switch (op) {
+    case '==':
+      return left === right;
+    case '!=':
+      return left !== right;
+    case '<':
+      return (left as any) < (right as any);
+    case '<=':
+      return (left as any) <= (right as any);
+    case '>':
+      return (left as any) > (right as any);
+    case '>=':
+      return (left as any) >= (right as any);
+    default:
+      return false;
+  }
+}
+
+function runFallbackQuery(queryValue: Query<DocumentData>): DocumentData[] {
+  let rows = getFallbackRowsForTable(queryValue.__table);
+
+  if (rows.length === 0) {
+    return rows;
+  }
+
+  for (const filter of queryValue.__filters) {
+    rows = rows.filter((row) => compareValues(row?.[filter.fieldPath], filter.value, filter.opStr));
+  }
+
+  if (queryValue.__orderBy.length > 0) {
+    for (let i = queryValue.__orderBy.length - 1; i >= 0; i -= 1) {
+      const order = queryValue.__orderBy[i];
+      const direction = order.direction === 'desc' ? -1 : 1;
+      rows.sort((a, b) => {
+        const left = toComparableValue(a?.[order.fieldPath]);
+        const right = toComparableValue(b?.[order.fieldPath]);
+
+        if (left === right) {
+          return 0;
+        }
+
+        return (left as any) > (right as any) ? direction : -direction;
+      });
+    }
+  }
+
+  if (queryValue.__startAfter) {
+    const cursorField = queryValue.__orderBy[0]?.fieldPath ?? 'id';
+    const cursorDirection = queryValue.__orderBy[0]?.direction ?? 'asc';
+    const cursorSource =
+      cursorField === 'id'
+        ? queryValue.__startAfter.id
+        : queryValue.__startAfter.data()?.[cursorField];
+    const cursor = toComparableValue(cursorSource);
+
+    rows = rows.filter((row) => {
+      const value = toComparableValue(cursorField === 'id' ? row.id : row?.[cursorField]);
+      return cursorDirection === 'asc' ? (value as any) > (cursor as any) : (value as any) < (cursor as any);
+    });
+  }
+
+  if (typeof queryValue.__limit === 'number') {
+    rows = rows.slice(0, queryValue.__limit);
+  }
+
+  return rows;
 }
 
 function isCollectionReference(value: any): value is CollectionReference<DocumentData> {
@@ -578,13 +761,22 @@ export async function getDocs<T = DocumentData>(
   if (error) {
     if (isMissingTableError(error)) {
       console.warn(makeMissingTableMessage(queryValue.__table));
-      return new QuerySnapshot<T>([]);
+      const fallbackRows = runFallbackQuery(queryValue as Query<DocumentData>);
+      const fallbackDocs = fallbackRows.map((row, index) => {
+        const id = resolveDocumentId(row, `${queryValue.__table}-fallback-${index}`);
+        return new DocumentSnapshot<T>(id, normalizeDocumentData(row), true);
+      });
+      return new QuerySnapshot<T>(fallbackDocs);
     }
 
     throw makeFirestoreError(error.message, error.code ?? 'firestore/query-failed');
   }
 
-  const rows = Array.isArray(data) ? data : [];
+  let rows = Array.isArray(data) ? data : [];
+  if (rows.length === 0) {
+    rows = runFallbackQuery(queryValue as Query<DocumentData>);
+  }
+
   const docs = rows.map((row, index) => {
     const id = resolveDocumentId(row, `${queryValue.__table}-${index}`);
     return new DocumentSnapshot<T>(id, normalizeDocumentData(row), true);
