@@ -11,7 +11,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 export function FirebaseErrorListener() {
   useEffect(() => {
     const handleError = (error: FirestorePermissionError) => {
-      console.error('Database permission event:', error.message);
+      console.warn('Database permission event:', error.message);
     };
 
     errorEmitter.on('permission-error', handleError);
