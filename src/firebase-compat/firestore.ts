@@ -150,6 +150,23 @@ function makeFirestoreError(message: string, code = 'firestore/unknown') {
   return new FirestoreError(message, code);
 }
 
+function isMissingTableError(error: { code?: string; message?: string } | null | undefined) {
+  if (!error) {
+    return false;
+  }
+
+  const message = error.message ?? '';
+  return (
+    error.code === 'PGRST205' ||
+    message.includes('Could not find the table') ||
+    message.includes('schema cache')
+  );
+}
+
+function makeMissingTableMessage(table: string) {
+  return `Supabase table '${table}' is missing. Run docs/supabase-setup.sql in your Supabase SQL editor.`;
+}
+
 function isCollectionReference(value: any): value is CollectionReference<DocumentData> {
   return value?.__kind === 'collection';
 }
@@ -559,6 +576,11 @@ export async function getDocs<T = DocumentData>(
   const { data, error } = await builder;
 
   if (error) {
+    if (isMissingTableError(error)) {
+      console.warn(makeMissingTableMessage(queryValue.__table));
+      return new QuerySnapshot<T>([]);
+    }
+
     throw makeFirestoreError(error.message, error.code ?? 'firestore/query-failed');
   }
 
@@ -583,6 +605,11 @@ async function getDocSnapshot<T = DocumentData>(docRef: DocumentReference<T>) {
   const { data, error } = await builder.maybeSingle();
 
   if (error) {
+    if (isMissingTableError(error)) {
+      console.warn(makeMissingTableMessage(docRef.__table));
+      return new DocumentSnapshot<T>(docRef.id, null, false);
+    }
+
     throw makeFirestoreError(error.message, error.code ?? 'firestore/get-failed');
   }
 
@@ -681,6 +708,13 @@ export async function addDoc(
     .single();
 
   if (error) {
+    if (isMissingTableError(error)) {
+      throw makeFirestoreError(
+        makeMissingTableMessage(colRef.__table),
+        'firestore/missing-table'
+      );
+    }
+
     throw makeFirestoreError(error.message, error.code ?? 'firestore/insert-failed');
   }
 
@@ -718,6 +752,13 @@ export async function setDoc(
   const { error } = await supabase.from(docRef.__table).upsert(completePayload);
 
   if (error) {
+    if (isMissingTableError(error)) {
+      throw makeFirestoreError(
+        makeMissingTableMessage(docRef.__table),
+        'firestore/missing-table'
+      );
+    }
+
     throw makeFirestoreError(error.message, error.code ?? 'firestore/set-failed');
   }
 }
@@ -736,6 +777,13 @@ export async function updateDoc(docRef: DocumentReference<DocumentData>, data: D
   const { error } = await builder;
 
   if (error) {
+    if (isMissingTableError(error)) {
+      throw makeFirestoreError(
+        makeMissingTableMessage(docRef.__table),
+        'firestore/missing-table'
+      );
+    }
+
     throw makeFirestoreError(error.message, error.code ?? 'firestore/update-failed');
   }
 }
@@ -753,6 +801,13 @@ export async function deleteDoc(docRef: DocumentReference<DocumentData>) {
   const { error } = await builder;
 
   if (error) {
+    if (isMissingTableError(error)) {
+      throw makeFirestoreError(
+        makeMissingTableMessage(docRef.__table),
+        'firestore/missing-table'
+      );
+    }
+
     throw makeFirestoreError(error.message, error.code ?? 'firestore/delete-failed');
   }
 }
