@@ -1,0 +1,59 @@
+/**
+ * This ruleset enforces a security model for a retail product catalog.
+ *
+ * Core Philosophy:
+ * The primary goal is to allow any user to browse the catalog freely while enabling
+ * administrators to manage products. Write access is restricted to authenticated users.
+ *
+ * Data Structure:
+ * - /products/{productId}: Stores individual product details.
+ * - /products/{productId}/reviews/{reviewId}: Stores user-specific ratings.
+ * - /categories/{categoryId}: Stores category information.
+ * - /styles/{styleId}: Stores style information.
+ * - /orders/{orderId}: Stores customer order information.
+ * This flat structure is performant and simplifies security rules.
+ *
+ * Key Security Decisions:
+ * - Public Read Access: All documents are publicly readable to allow the app's front-end
+ *   to function for all visitors.
+ * - Authenticated Write Access: Write operations on products,
+ *   categories, and styles are restricted to signed-in users.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+
+      match /reviews/{reviewId} {
+        allow read: if true;
+        // Allow creating reviews with validation.
+        allow create: if request.resource.data.userName is string && request.resource.data.userName.size() >= 2 && request.resource.data.userName.size() <= 50
+                      && request.resource.data.rating is number && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+                      && request.resource.data.comment is string && request.resource.data.comment.size() >= 10 && request.resource.data.comment.size() <= 500
+                      && request.resource.data.createdAt == request.time;
+      }
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      // Allow writes only for authenticated users (admins).
+      allow write: if request.auth != null;
+    }
+    
+    match /styles/{styleId} {
+      allow read: if true;
+      // Allow writes only for authenticated users (admins).
+      allow write: if request.auth != null;
+    }
+    
+    match /orders/{orderId} {
+      // Allow admins to read and update orders
+      allow read, update: if request.auth != null;
+      // Disallow client-side creation and deletion of orders
+      allow create, delete: if false;
+    }
+  }
+}

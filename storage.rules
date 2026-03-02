@@ -1,0 +1,13 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // Allows anyone to view images (needed for your product cards)
+      allow read: if true;
+
+      // Allows upload ONLY if you are logged in.
+      // The app automatically signs users in anonymously to satisfy this rule.
+      allow write: if request.auth != null;
+    }
+  }
+}

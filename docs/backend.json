@@ -1,0 +1,262 @@
+{
+  "entities": {
+    "Product": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Product",
+      "type": "object",
+      "description": "Represents a product in the Runway Retail application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the product."
+        },
+        "slug": {
+          "type": "string",
+          "description": "URL-friendly slug for the product."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the product."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the product."
+        },
+        "price": {
+          "type": "number",
+          "description": "The price of the product."
+        },
+        "originalPrice": {
+          "type": "number",
+          "description": "The original price before a discount."
+        },
+        "isFeatured": {
+          "type": "boolean",
+          "description": "Whether the product is featured on the homepage."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the product (e.g., Men, Women)."
+        },
+        "style": {
+          "type": "string",
+          "description": "The style of the product (e.g., Casual, Streetwear)."
+        },
+        "images": {
+          "type": "array",
+          "description": "Product images. The first image is the main image.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "url": { "type": "string", "format": "uri" },
+              "alt": { "type": "string" },
+              "hint": { "type": "string" },
+              "colorName": { "type": "string" }
+            },
+            "required": ["url", "alt"]
+          }
+        },
+        "availableColors": {
+          "type": "array",
+          "description": "Available product colors.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "hex": { "type": "string" }
+            },
+            "required": ["name", "hex"]
+          }
+        },
+        "sizes": {
+          "type": "array",
+          "description": "Available product sizes.",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["id", "slug", "name", "price", "category", "images"]
+    },
+    "Category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
+      "type": "object",
+      "description": "Represents a product category (e.g., Men, Women, Bags).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the category."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the category."
+        }
+      },
+      "required": ["id", "name"]
+    },
+    "Style": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Style",
+      "type": "object",
+      "description": "Represents a product style (e.g., Casual, Streetwear).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the style."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the style."
+        }
+      },
+      "required": ["id", "name"]
+    },
+    "Review": {
+      "title": "Review",
+      "type": "object",
+      "description": "Represents a user's review for a product, including a star rating and a text comment.",
+      "properties": {
+        "userName": {
+          "type": "string",
+          "description": "The display name of the user who left the review."
+        },
+        "rating": {
+          "type": "number",
+          "description": "The star rating from 1 to 5."
+        },
+        "comment": {
+          "type": "string",
+          "description": "The text content of the review."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the review was created."
+        }
+      },
+      "required": ["userName", "rating", "comment", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "type": "object",
+      "description": "Represents a customer's order.",
+      "properties": {
+        "customerName": { "type": "string", "description": "Name of the customer who placed the order." },
+        "customerEmail": { "type": "string", "description": "Email of the customer, captured from Paystack.", "format": "email"},
+        "customerPhone": { "type": "string", "description": "Phone number of the customer." },
+        "products": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "quantity": { "type": "number" },
+              "price": { "type": "number" }
+            },
+            "required": ["id", "name", "quantity", "price"]
+          }
+        },
+        "totalAmount": { "type": "number" },
+        "shippingAddress": {
+          "type": "object",
+          "properties": {
+            "description": { "type": "string" }
+          },
+          "required": ["description"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "shipped", "delivered", "cancelled"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["products", "totalAmount", "shippingAddress", "status", "createdAt"]
+    }
+  },
+  "auth": {
+    "providers": ["email"]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/products/{productId}",
+        "definition": {
+          "entityName": "Product",
+          "schema": {
+            "$ref": "#/backend/entities/Product"
+          },
+          "description": "Stores product information.  The `productId` is the document ID.",
+          "params": [
+            {
+              "name": "productId",
+              "description": "The unique identifier for the product."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/products/{productId}/reviews/{reviewId}",
+        "definition": {
+          "entityName": "Review",
+          "schema": {
+            "$ref": "#/backend/entities/Review"
+          },
+          "description": "Stores user ratings for a product. The `reviewId` is an auto-generated document ID.",
+          "params": [
+            { "name": "productId", "description": "The ID of the product being reviewed." },
+            { "name": "reviewId", "description": "The unique identifier for the review." }
+          ]
+        }
+      },
+      {
+        "path": "/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Stores category information.  The `categoryId` is the document ID.",
+          "params": [
+            {
+              "name": "categoryId",
+              "description": "The unique identifier for the category."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/styles/{styleId}",
+        "definition": {
+          "entityName": "Style",
+          "schema": {
+            "$ref": "#/backend/entities/Style"
+          },
+          "description": "Stores style information. The `styleId` is the document ID.",
+          "params": [
+            {
+              "name": "styleId",
+              "description": "The unique identifier for the style."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/orders/{orderId}",
+        "definition": {
+          "entityName": "Order",
+          "schema": {
+            "$ref": "#/backend/entities/Order"
+          },
+          "description": "Stores customer orders.",
+          "params": [
+            {
+              "name": "orderId",
+              "description": "The unique identifier for the order."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The data structure prioritizes authorization independence and QAPs (Rules are not filters). Products, Categories, and Styles are stored in top-level collections. This flat structure avoids hierarchical `get()` calls in security rules."
+  }
+}
