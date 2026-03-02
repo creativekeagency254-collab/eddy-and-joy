@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import CategoryTabs from '@/components/product/category-tabs';
 import { Button } from '@/components/ui/button';
 
-const PAGE_SIZE = 1;
+const PAGE_SIZE = 8;
 
 export default function BagsPage() {
   const firestore = useFirestore();
@@ -28,7 +28,7 @@ export default function BagsPage() {
       setIsLoading(true);
       setProducts([]);
       setLastVisible(null);
-      setHasMore(false);
+      setHasMore(true);
     } else {
       setIsLoading(true);
     }
@@ -52,7 +52,7 @@ export default function BagsPage() {
       const newProducts = documentSnapshots.docs.map(doc => ({ ...(doc.data() as Product), id: doc.id }));
       const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
 
-      setHasMore(false);
+      setHasMore(newProducts.length === PAGE_SIZE);
       setLastVisible(lastDoc || null);
       setProducts(currentProducts => {
         const combined = isNewQuery ? newProducts : [...currentProducts, ...newProducts];
@@ -79,7 +79,7 @@ export default function BagsPage() {
 
       <div className="border-t pt-6">
         <CategoryTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 pt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8 pt-6">
           {isLoading && products.length === 0 && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[400px] w-full rounded-2xl" />)}
           {products.map(product => (
             <ProductCard key={product.id} product={product} />
@@ -97,3 +97,6 @@ export default function BagsPage() {
     </div>
   );
 }
+
+
+

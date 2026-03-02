@@ -17,6 +17,11 @@ export default function ProductCard({ product }: { product: Product }) {
   };
   
   const isInWishlist = isProductInWishlist(product.id);
+  const hasDiscount =
+    typeof product.originalPrice === 'number' && product.originalPrice > product.price;
+  const discountPercent = hasDiscount
+    ? Math.round(((product.originalPrice! - product.price) / product.originalPrice!) * 100)
+    : null;
 
   const handleWishlistClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -31,7 +36,7 @@ export default function ProductCard({ product }: { product: Product }) {
   }
 
   return (
-    <div className="relative group aspect-[4/5.5] rounded-2xl overflow-hidden border-2 border-black bg-gray-100 shadow-sm transition-all duration-500 hover:shadow-2xl">
+    <div className="relative group aspect-[5/7] rounded-2xl overflow-hidden border-2 border-black bg-gray-100 shadow-sm transition-all duration-500 hover:shadow-2xl">
       <Image
         src={primaryImage.url}
         alt={primaryImage.alt}
@@ -47,6 +52,14 @@ export default function ProductCard({ product }: { product: Product }) {
           {product.style || product.category}
         </span>
       </div>
+
+      {hasDiscount && discountPercent && (
+        <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20">
+          <span className="bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
+            -{discountPercent}%
+          </span>
+        </div>
+      )}
 
       {/* Wishlist Button (Top Right) */}
       <button
@@ -73,16 +86,16 @@ export default function ProductCard({ product }: { product: Product }) {
           <p className="text-gray-800 text-sm font-medium lowercase truncate opacity-80">
             {product.name}
           </p>
-          <div className="flex items-center gap-4">
-            <span className="text-lg font-medium text-black">
-              Ksh {product.price.toLocaleString()}
-            </span>
-            {product.originalPrice && (
-              <span className="text-xs text-red-500 line-through font-medium opacity-80">
-                Ksh {product.originalPrice.toLocaleString()}
+          {hasDiscount ? (
+            <div className="flex items-end gap-3">
+              <span className="text-xl font-black text-black">Ksh {product.price.toLocaleString()}</span>
+              <span className="text-xs text-red-600 line-through font-bold">
+                Ksh {product.originalPrice!.toLocaleString()}
               </span>
-            )}
-          </div>
+            </div>
+          ) : (
+            <span className="text-xl font-black text-black">Ksh {product.price.toLocaleString()}</span>
+          )}
         </div>
 
         <button

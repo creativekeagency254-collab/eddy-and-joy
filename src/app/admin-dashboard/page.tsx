@@ -4,18 +4,17 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCollection, useFirestore, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, useFirebaseApp, useAuth, useUser, addDocumentNonBlocking } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, useFirebaseApp, addDocumentNonBlocking } from '@/firebase';
 import { collection, doc, serverTimestamp, query, orderBy, Timestamp } from 'firebase/firestore';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { Product, Order } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Trash, Edit, Copy, Star, PlusCircle, LogOut, AlertCircle, ShoppingBag, Package, CheckCircle2, Check, MapPin } from 'lucide-react';
+import { Trash, Edit, Copy, Star, PlusCircle, LogOut, ShoppingBag, Package, CheckCircle2, Check, MapPin } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
@@ -25,7 +24,7 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from '@/lib/utils';
 
 const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
@@ -40,13 +39,7 @@ const COLOR_PALETTE = [
   { name: 'Terracotta', hex: '#E2725B' }, { name: 'Ochre', hex: '#CC7722' }, { name: 'Sand', hex: '#C2B280' },
   { name: 'Taupe', hex: '#483C32' }, { name: 'Charcoal', hex: '#36454F' }, { name: 'Slate', hex: '#708090' },
   { name: 'Navy', hex: '#000080' }, { name: 'Maroon', hex: '#800000' }, { name: 'Forest', hex: '#228B22' },
-  { name: 'Zinc', hex: '#71717A' }, { name: 'Teal', hex: '#008080' }, { name: 'Emerald', hex: '#50C878' },
-  { name: 'Crimson', hex: '#DC143C' }, { name: 'Amber', hex: '#FFBF00' }, { name: 'Violet', hex: '#EE82EE' },
-  { name: 'Fuchsia', hex: '#FF00FF' }, { name: 'Mint', hex: '#98FF98' }, { name: 'Mauve', hex: '#E0B0FF' },
-  { name: 'Ivory', hex: '#FFFFF0' }, { name: 'Coral', hex: '#FF7F50' }, { name: 'Khaki', hex: '#F0E68C' },
-  { name: 'Cyan', hex: '#00FFFF' }, { name: 'Magenta', hex: '#FF00EF' }, { name: 'Silver', hex: '#C0C0C0' },
-  { name: 'Gold', hex: '#FFD700' }, { name: 'Bronze', hex: '#CD7F32' }, { name: 'Copper', hex: '#B87333' },
-  { name: 'Rust', hex: '#B7410E' }
+  { name: 'Zinc', hex: '#71717A' }, { name: 'Teal', hex: '#008080' }, { name: 'Emerald', hex: '#50C878' }
 ];
 
 const productSchema = z.object({
@@ -70,11 +63,10 @@ type ProductFormData = z.infer<typeof productSchema>;
 type Category = { id: string; name: string };
 type Style = { id: string; name: string };
 
-function DashboardContent() {
+function DashboardContent({ onLogout }: { onLogout: () => void }) {
   const { toast } = useToast();
   const firestore = useFirestore();
   const firebaseApp = useFirebaseApp();
-  const auth = useAuth();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -255,15 +247,6 @@ function DashboardContent() {
     toast({ title: 'Order Status Updated' });
   };
 
-  const handleLogout = async () => {
-    try {
-        await auth.signOut();
-        toast({ title: 'Logged out successfully' });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Logout Failed', description: e.message });
-    }
-  };
-
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -272,7 +255,7 @@ function DashboardContent() {
             <p className="text-muted-foreground mt-1 text-sm uppercase font-semibold tracking-widest">Store Management</p>
         </div>
         <div className="flex gap-3">
-            <Button variant="outline" onClick={handleLogout} className="rounded-full"><LogOut className="h-4 w-4 mr-2" /> Logout</Button>
+            <Button variant="outline" onClick={onLogout} className="rounded-full"><LogOut className="h-4 w-4 mr-2" /> Logout</Button>
             <Button onClick={openNewDialog} className="rounded-full shadow-lg"><PlusCircle className="h-4 w-4 mr-2" /> Add Product</Button>
         </div>
       </div>
@@ -506,7 +489,12 @@ function DashboardContent() {
                 <h3 className="font-bold truncate text-sm flex-grow">{product.name}</h3>
                 <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full uppercase font-bold">{product.category}</span>
               </div>
-              <p className="text-lg font-black mt-1">Ksh {product.price.toLocaleString()}</p>
+              <div className="mt-1 flex items-end gap-2">
+                <p className="text-lg font-black">Ksh {product.price.toLocaleString()}</p>
+                {typeof product.originalPrice === 'number' && product.originalPrice > product.price && (
+                  <p className="text-xs text-red-600 line-through font-bold">Ksh {product.originalPrice.toLocaleString()}</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -578,55 +566,71 @@ function DashboardContent() {
   );
 }
 
+const ADMIN_SESSION_KEY = 'eddyjoy_admin_session';
+
 export default function AdminDashboard() {
-  const { user, isUserLoading } = useUser();
-  const auth = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
-  const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+  const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@gmail.com').trim().toLowerCase();
+  const ADMIN_PASSWORD = (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'Mmm@29315122').trim();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  useEffect(() => {
+    try {
+      const savedSession =
+        typeof window !== 'undefined' ? window.localStorage.getItem(ADMIN_SESSION_KEY) : null;
+      setIsAuthorized(savedSession === ADMIN_EMAIL);
+    } finally {
+      setIsCheckingSession(false);
+    }
+  }, [ADMIN_EMAIL]);
+
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) return;
-
     setIsLoggingIn(true);
     setLoginError(null);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error: any) {
-      console.error("Login error:", error);
-      setLoginError("Login failed. Check your credentials or configuration.");
-    } finally {
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const isEmailMatch = normalizedEmail === ADMIN_EMAIL;
+    const isPasswordMatch = password === ADMIN_PASSWORD;
+
+    if (isEmailMatch && isPasswordMatch) {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(ADMIN_SESSION_KEY, ADMIN_EMAIL);
+      }
+      setIsAuthorized(true);
+      setEmail('');
+      setPassword('');
       setIsLoggingIn(false);
+      return;
     }
+
+    setLoginError('Login failed. Check your credentials.');
+    setIsLoggingIn(false);
   };
 
-  if (isUserLoading) {
-    return <div className="flex justify-center items-center h-screen"><Skeleton className="h-64 w-full max-w-sm" /></div>;
-  }
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(ADMIN_SESSION_KEY);
+    }
+    setIsAuthorized(false);
+    setLoginError(null);
+  };
 
-  if (!ADMIN_EMAIL) {
+  if (isCheckingSession) {
     return (
-      <div className="container mx-auto py-12 flex justify-center">
-        <Alert variant="destructive" className="max-w-md border-2 border-destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle className="font-bold">Configuration Missing</AlertTitle>
-          <AlertDescription>
-            The <code>NEXT_PUBLIC_ADMIN_EMAIL</code> environment variable is not set. 
-            Please check your <code>.env</code> file and restart the server.
-          </AlertDescription>
-        </Alert>
+      <div className="flex justify-center items-center h-screen">
+        <Skeleton className="h-64 w-full max-w-sm" />
       </div>
     );
   }
 
-  const isAuthorized = user && user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-
   if (isAuthorized) {
-    return <DashboardContent />;
+    return <DashboardContent onLogout={handleLogout} />;
   }
 
   return (
@@ -638,54 +642,46 @@ export default function AdminDashboard() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
-             <div className="space-y-2">
-                 <FormLabel className="font-bold text-xs uppercase tracking-widest ml-1">Email</FormLabel>
-                 <Input
-                  type="email"
-                  placeholder="admin@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoggingIn}
-                  required
-                  className="rounded-2xl h-12 border-2"
-                />
-             </div>
-             <div className="space-y-2">
-                 <FormLabel className="font-bold text-xs uppercase tracking-widest ml-1">Password</FormLabel>
-                 <Input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoggingIn}
-                  required
-                  className="rounded-2xl h-12 border-2"
-                />
-             </div>
+            <div className="space-y-2">
+              <label className="font-bold text-xs uppercase tracking-widest ml-1 block">Email</label>
+              <Input
+                type="email"
+                placeholder="admin@gmail.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoggingIn}
+                required
+                className="rounded-2xl h-12 border-2"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="font-bold text-xs uppercase tracking-widest ml-1 block">Password</label>
+              <Input
+                type="password"
+                placeholder="********"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoggingIn}
+                required
+                className="rounded-2xl h-12 border-2"
+              />
+            </div>
             <Button type="submit" disabled={isLoggingIn} className="w-full h-14 rounded-2xl text-lg font-black mt-4 shadow-lg">
               {isLoggingIn ? 'Verifying...' : 'Login to Dashboard'}
             </Button>
             {loginError && (
-                <Alert variant="destructive" className="mt-4 p-2 py-3 rounded-xl border-2">
-                    <AlertDescription className="text-xs font-bold text-center">{loginError}</AlertDescription>
-                </Alert>
-            )}
-            
-            {user && !isAuthorized && (
-                <div className="mt-6 p-4 bg-red-50 border-2 border-red-100 rounded-2xl text-xs text-center">
-                    <p className="text-red-800 font-bold mb-1">Unauthorized Account</p>
-                    <p className="text-red-600 mb-3">Logged in as <strong>{user.email}</strong>, which is not the configured admin email.</p>
-                    <Button variant="outline" size="sm" onClick={() => auth.signOut()} className="w-full rounded-xl border-2 border-red-200 text-red-700 hover:bg-red-100">Switch Account</Button>
-                </div>
+              <Alert variant="destructive" className="mt-4 p-2 py-3 rounded-xl border-2">
+                <AlertDescription className="text-xs font-bold text-center">{loginError}</AlertDescription>
+              </Alert>
             )}
           </form>
           <div className="mt-8 p-4 bg-gray-50 rounded-2xl text-[10px] text-muted-foreground border-2 border-gray-100 border-dashed">
-              <p className="font-black text-black mb-1 uppercase tracking-widest">Configuration Status:</p>
-              <ul className="space-y-1">
-                  <li className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-green-500"></div> Auth System: Active</li>
-                  <li className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-green-500"></div> Target Email: {ADMIN_EMAIL}</li>
-                  <li className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div> Requirement: User must exist in Firebase</li>
-              </ul>
+            <p className="font-black text-black mb-1 uppercase tracking-widest">Configuration Status:</p>
+            <ul className="space-y-1">
+              <li className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-green-500"></div> Login Mode: Admin Credentials</li>
+              <li className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-green-500"></div> Target Email: {ADMIN_EMAIL}</li>
+              <li className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div> Entry Point: Bags section admin button</li>
+            </ul>
           </div>
         </CardContent>
       </Card>

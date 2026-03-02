@@ -7,5 +7,6 @@
   "NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET": "products",
   "NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY": "pk_test_...",
   "PAYSTACK_SECRET_KEY": "sk_test_...",
-  "NEXT_PUBLIC_ADMIN_EMAIL": "admin@runway.com"
+  "NEXT_PUBLIC_ADMIN_EMAIL": "admin@gmail.com",
+  "NEXT_PUBLIC_ADMIN_PASSWORD": "Mmm@29315122"
 }

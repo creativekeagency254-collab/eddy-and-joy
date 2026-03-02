@@ -29,10 +29,32 @@ const WhatsAppIcon = () => (
 
 const checkoutSchema = z.object({
   name: z.string().min(2, 'Name is required'),
-  phone: z.string().min(10, 'A valid phone number is required'),
+  phone: z.string().regex(/^07\d{8}$/, 'Phone must start with 07 and be 10 digits'),
   description: z.string().min(1, 'Delivery address is required'),
 });
 type CheckoutFormData = z.infer<typeof checkoutSchema>;
+
+function normalizePhoneInput(value: string) {
+  const digits = value.replace(/\D/g, '');
+
+  if (!digits) {
+    return '07';
+  }
+
+  if (digits.startsWith('2547')) {
+    return `0${digits.slice(3)}`.slice(0, 10);
+  }
+
+  if (digits.startsWith('7')) {
+    return `0${digits}`.slice(0, 10);
+  }
+
+  if (!digits.startsWith('07')) {
+    return `07${digits.slice(2)}`.slice(0, 10);
+  }
+
+  return digits.slice(0, 10);
+}
 
 function CheckoutDialog() {
   const { cart, cartTotal, clearCart, setOpen: setCartOpen } = useAppContext();
@@ -58,6 +80,7 @@ function CheckoutDialog() {
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
     currency: 'KES',
     metadata: {
+        custom_fields: [],
         cartItems: cart.map(item => ({ name: item.name, quantity: item.quantity, price: item.price })),
         customerName: watchedName,
         customerPhone: watchedPhone,
@@ -98,7 +121,12 @@ function CheckoutDialog() {
   };
 
   const handleCheckoutSubmit = (data: CheckoutFormData) => {
-    initializePayment(onPaymentSuccess);
+    initializePayment({
+      onSuccess: onPaymentSuccess,
+      onClose: () => {
+        toast({ title: 'Payment cancelled', description: 'You can try again anytime.' });
+      },
+    });
   };
   
   const handlePayNowClick = () => {
@@ -145,7 +173,14 @@ function CheckoutDialog() {
                     <FormField control={checkoutForm.control} name="phone" render={({ field }) => (
                       <FormItem>
                         <FormLabel className="font-bold text-xs uppercase tracking-tighter">Phone Number</FormLabel>
-                        <FormControl><Input type="tel" {...field} className="rounded-xl h-11 border-2" /></FormControl>
+                        <FormControl>
+                          <Input
+                            type="tel"
+                            value={field.value}
+                            onChange={(e) => field.onChange(normalizePhoneInput(e.target.value))}
+                            className="rounded-xl h-11 border-2"
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}/>
