@@ -21,7 +21,7 @@ export default function Home() {
 
   const firestore = useFirestore();
   const productsQuery = useMemoFirebase(
-    () => firestore ? query(collection(firestore, 'products'), where('isFeatured', '==', true), limit(8)) : null,
+    () => firestore ? query(collection(firestore, 'products'), where('isFeatured', '==', true), limit(1)) : null,
     [firestore]
   );
   const { data: products, isLoading } = useCollection<Product>(productsQuery);
@@ -130,7 +130,7 @@ export default function Home() {
 
       <h2 className="mt-8 mb-4 text-xl font-semibold">Featured Products</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mt-6">
-        {isLoading && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[400px] rounded-2xl" />)}
+        {isLoading && Array.from({ length: 1 }).map((_, i) => <Skeleton key={i} className="h-[400px] rounded-2xl" />)}
         {products?.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}

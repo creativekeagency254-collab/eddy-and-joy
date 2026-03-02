@@ -13,7 +13,7 @@ import type { Product } from '@/lib/types';
 import { collection, query, where, getDocs, limit, startAfter, DocumentData, DocumentSnapshot, Query } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 1;
 
 export default function MenPage() {
   const [activeTab, setActiveTab] = useState("All");
@@ -33,7 +33,7 @@ export default function MenPage() {
       setIsLoading(true);
       setProducts([]);
       setLastVisible(null);
-      setHasMore(true);
+      setHasMore(false);
     } else {
       setIsLoading(true);
     }
@@ -57,7 +57,7 @@ export default function MenPage() {
       const newProducts = documentSnapshots.docs.map(doc => ({ ...(doc.data() as Product), id: doc.id }));
       const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
 
-      setHasMore(newProducts.length === PAGE_SIZE);
+      setHasMore(false);
       setLastVisible(lastDoc || null);
       setProducts(currentProducts => (isNewQuery ? newProducts : [...currentProducts, ...newProducts]));
     } catch (error) {

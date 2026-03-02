@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import CategoryTabs from '@/components/product/category-tabs';
 import { Button } from '@/components/ui/button';
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 1;
 
 export default function BagsPage() {
   const firestore = useFirestore();
@@ -28,7 +28,7 @@ export default function BagsPage() {
       setIsLoading(true);
       setProducts([]);
       setLastVisible(null);
-      setHasMore(true);
+      setHasMore(false);
     } else {
       setIsLoading(true);
     }
@@ -52,7 +52,7 @@ export default function BagsPage() {
       const newProducts = documentSnapshots.docs.map(doc => ({ ...(doc.data() as Product), id: doc.id }));
       const lastDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
 
-      setHasMore(newProducts.length === PAGE_SIZE);
+      setHasMore(false);
       setLastVisible(lastDoc || null);
       setProducts(currentProducts => {
         const combined = isNewQuery ? newProducts : [...currentProducts, ...newProducts];
