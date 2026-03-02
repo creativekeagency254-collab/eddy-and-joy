@@ -28,6 +28,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from '@/lib/utils';
 
 const AVAILABLE_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const DEFAULT_CATEGORY_NAMES = ['Men', 'Women', 'Children', 'Unisex', 'Bags'];
+const DEFAULT_STYLE_NAMES = ['Classic'];
 
 const COLOR_PALETTE = [
   { name: 'Black', hex: '#000000' }, { name: 'White', hex: '#FFFFFF' }, { name: 'Stone', hex: '#A8A29E' },
@@ -63,6 +65,35 @@ type ProductFormData = z.infer<typeof productSchema>;
 type Category = { id: string; name: string };
 type Style = { id: string; name: string };
 const SITE_URL = 'https://www.eddjos.com';
+
+function mergeNamedOptions<T extends { id: string; name: string }>(
+  existing: T[] | undefined,
+  optimistic: T[],
+  defaults: string[],
+  prefix: string
+) {
+  const bucket = new Map<string, T>();
+
+  for (const item of existing || []) {
+    const normalized = item.name.trim().toLowerCase();
+    if (!normalized) continue;
+    bucket.set(normalized, item);
+  }
+
+  for (const item of optimistic) {
+    const normalized = item.name.trim().toLowerCase();
+    if (!normalized) continue;
+    bucket.set(normalized, item);
+  }
+
+  for (const defaultName of defaults) {
+    const normalized = defaultName.trim().toLowerCase();
+    if (!normalized || bucket.has(normalized)) continue;
+    bucket.set(normalized, { id: `${prefix}-${normalized.replace(/\s+/g, '-')}`, name: defaultName } as T);
+  }
+
+  return Array.from(bucket.values()).sort((a, b) => a.name.localeCompare(b.name));
+}
 
 function getCategoryPath(category: string) {
   const normalized = category.trim().toLowerCase();
@@ -103,6 +134,10 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isStyleDialogOpen, setIsStyleDialogOpen] = useState(false);
   const [newStyleName, setNewStyleName] = useState('');
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [isSavingStyle, setIsSavingStyle] = useState(false);
+  const [optimisticCategories, setOptimisticCategories] = useState<Category[]>([]);
+  const [optimisticStyles, setOptimisticStyles] = useState<Style[]>([]);
 
   const productsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]);
   const categoriesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'categories') : null, [firestore]);
@@ -124,8 +159,14 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
     }, { totalSales: 0, pendingOrders: 0, totalRevenue: 0 });
   }, [orders]);
 
-  const sortedCategories = useMemo(() => categories?.sort((a, b) => a.name.localeCompare(b.name)) || [], [categories]);
-  const sortedStyles = useMemo(() => styles?.sort((a, b) => a.name.localeCompare(b.name)) || [], [styles]);
+  const sortedCategories = useMemo(
+    () => mergeNamedOptions<Category>(categories || undefined, optimisticCategories, DEFAULT_CATEGORY_NAMES, 'cat'),
+    [categories, optimisticCategories]
+  );
+  const sortedStyles = useMemo(
+    () => mergeNamedOptions<Style>(styles || undefined, optimisticStyles, DEFAULT_STYLE_NAMES, 'style'),
+    [styles, optimisticStyles]
+  );
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
@@ -289,20 +330,80 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
     setIsDialogOpen(true);
   }
   
-  const handleAddCategory = () => {
-    if (!firestore || !newCategoryName.trim()) return;
-    addDocumentNonBlocking(collection(firestore, 'categories'), { name: newCategoryName.trim() });
-    setNewCategoryName('');
-    setIsCategoryDialogOpen(false);
-    toast({ title: 'Category Added' });
+  const handleAddCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+
+    setIsSavingCategory(true);
+    try {
+      const response = await fetch('/api/admin/catalog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'category', name }),
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result?.message || 'Failed to add category.');
+      }
+
+      const newRecord: Category = {
+        id: String(result?.data?.id || `cat-${name.toLowerCase().replace(/\s+/g, '-')}`),
+        name: String(result?.data?.name || name),
+      };
+
+      setOptimisticCategories((current) => {
+        const normalized = newRecord.name.trim().toLowerCase();
+        return [...current.filter((item) => item.name.trim().toLowerCase() !== normalized), newRecord];
+      });
+      form.setValue('category', newRecord.name, { shouldValidate: true });
+      setNewCategoryName('');
+      setIsCategoryDialogOpen(false);
+      toast({ title: 'Category Added', description: `${newRecord.name} is now available.` });
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Failed to add category.';
+      toast({ variant: 'destructive', title: 'Category Add Failed', description: message });
+    } finally {
+      setIsSavingCategory(false);
+    }
   };
   
-  const handleAddStyle = () => {
-    if (!firestore || !newStyleName.trim()) return;
-    addDocumentNonBlocking(collection(firestore, 'styles'), { name: newStyleName.trim() });
-    setNewStyleName('');
-    setIsStyleDialogOpen(false);
-    toast({ title: 'Style Added' });
+  const handleAddStyle = async () => {
+    const name = newStyleName.trim();
+    if (!name) return;
+
+    setIsSavingStyle(true);
+    try {
+      const response = await fetch('/api/admin/catalog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'style', name }),
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result?.message || 'Failed to add style.');
+      }
+
+      const newRecord: Style = {
+        id: String(result?.data?.id || `style-${name.toLowerCase().replace(/\s+/g, '-')}`),
+        name: String(result?.data?.name || name),
+      };
+
+      setOptimisticStyles((current) => {
+        const normalized = newRecord.name.trim().toLowerCase();
+        return [...current.filter((item) => item.name.trim().toLowerCase() !== normalized), newRecord];
+      });
+      form.setValue('style', newRecord.name, { shouldValidate: true });
+      setNewStyleName('');
+      setIsStyleDialogOpen(false);
+      toast({ title: 'Style Added', description: `${newRecord.name} is now available.` });
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'Failed to add style.';
+      toast({ variant: 'destructive', title: 'Style Add Failed', description: message });
+    } finally {
+      setIsSavingStyle(false);
+    }
   };
   
   const handleUpdateOrderStatus = (orderId: string, status: Order['status']) => {
@@ -428,6 +529,9 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Category" /></SelectTrigger></FormControl>
                           <SelectContent>
+                            {sortedCategories.length === 0 && (
+                              <SelectItem value="__no_categories__" disabled>No categories yet</SelectItem>
+                            )}
                             {sortedCategories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
@@ -443,6 +547,9 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl><SelectTrigger className="rounded-xl"><SelectValue placeholder="Style" /></SelectTrigger></FormControl>
                           <SelectContent>
+                            {sortedStyles.length === 0 && (
+                              <SelectItem value="__no_styles__" disabled>No styles yet</SelectItem>
+                            )}
                             {sortedStyles.map(sty => <SelectItem key={sty.id} value={sty.name}>{sty.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
@@ -551,16 +658,16 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
       <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
           <DialogContent>
               <DialogHeader><DialogTitle>New Category</DialogTitle></DialogHeader>
-              <Input placeholder="Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="rounded-xl" />
-              <DialogFooter><Button onClick={handleAddCategory} className="rounded-full">Add Category</Button></DialogFooter>
+              <Input placeholder="Category Name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} className="rounded-xl" disabled={isSavingCategory} />
+              <DialogFooter><Button onClick={handleAddCategory} className="rounded-full" disabled={!newCategoryName.trim() || isSavingCategory}>{isSavingCategory ? 'Adding...' : 'Add Category'}</Button></DialogFooter>
           </DialogContent>
       </Dialog>
       
       <Dialog open={isStyleDialogOpen} onOpenChange={setIsStyleDialogOpen}>
           <DialogContent>
               <DialogHeader><DialogTitle>New Style</DialogTitle></DialogHeader>
-              <Input placeholder="Style Name" value={newStyleName} onChange={(e) => setNewStyleName(e.target.value)} className="rounded-xl" />
-              <DialogFooter><Button onClick={handleAddStyle} className="rounded-full">Add Style</Button></DialogFooter>
+              <Input placeholder="Style Name" value={newStyleName} onChange={(e) => setNewStyleName(e.target.value)} className="rounded-xl" disabled={isSavingStyle} />
+              <DialogFooter><Button onClick={handleAddStyle} className="rounded-full" disabled={!newStyleName.trim() || isSavingStyle}>{isSavingStyle ? 'Adding...' : 'Add Style'}</Button></DialogFooter>
           </DialogContent>
       </Dialog>
       
