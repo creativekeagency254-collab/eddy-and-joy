@@ -240,7 +240,7 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      name: '', slug: '', description: '', category: '', style: '',
+      name: '', slug: '', description: '', category: DEFAULT_CATEGORY_NAMES[0], style: DEFAULT_STYLE_NAMES[0],
       price: 0, originalPrice: null, imageUrl1: '', imageUrl2: '',
       imageUrl3: '', imageUrl4: '', sizes: [], availableColors: [],
       isFeatured: false,
@@ -422,7 +422,7 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
   const openNewDialog = () => {
     setEditingProduct(null);
     form.reset({
-      name: '', slug: '', description: '', category: '', style: '',
+      name: '', slug: '', description: '', category: DEFAULT_CATEGORY_NAMES[0], style: DEFAULT_STYLE_NAMES[0],
       price: 0, originalPrice: null, imageUrl1: '', imageUrl2: '',
       imageUrl3: '', imageUrl4: '', sizes: [], availableColors: [],
       isFeatured: false,
@@ -667,43 +667,29 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                   <FormField control={form.control} name="category" render={({ field }) => (
                     <FormItem>
                       <FormLabel className="font-bold">Category</FormLabel>
-                       <div className="flex gap-2">
-                        <FormControl>
-                          <Input
-                            list="admin-category-options"
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(e.target.value)}
-                            placeholder="Select or type category"
-                            className="rounded-xl"
-                          />
-                        </FormControl>
+                      <div className="flex gap-2">
+                        <Select
+                          value={field.value || DEFAULT_CATEGORY_NAMES[0]}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="rounded-xl">
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {categoryOptions.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.name}>
+                                {cat.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <Button type="button" variant="outline" size="icon" className="rounded-xl" onClick={() => setIsCategoryDialogOpen(true)}><PlusCircle className="h-4 w-4" /></Button>
                       </div>
-                      <datalist id="admin-category-options">
-                        {categoryOptions.map((cat) => (
-                          <option key={cat.id} value={cat.name} />
-                        ))}
-                      </datalist>
                       <p className="text-[11px] text-muted-foreground">
                         Main category pages: Men, Women, Children, Unisex, Bags.
                       </p>
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {categoryOptions.map((cat) => (
-                          <button
-                            key={`pick-cat-${cat.id}`}
-                            type="button"
-                            onClick={() => field.onChange(cat.name)}
-                            className={cn(
-                              "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-                              (field.value || '').trim().toLowerCase() === cat.name.trim().toLowerCase()
-                                ? "bg-black text-white border-black"
-                                : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                            )}
-                          >
-                            {cat.name}
-                          </button>
-                        ))}
-                      </div>
                       <FormMessage />
                     </FormItem>
                   )}/>
@@ -711,39 +697,26 @@ function DashboardContent({ onLogout }: { onLogout: () => void }) {
                     <FormItem>
                       <FormLabel className="font-bold">Style</FormLabel>
                       <div className="flex gap-2">
-                        <FormControl>
-                          <Input
-                            list="admin-style-options"
-                            value={field.value || ''}
-                            onChange={(e) => field.onChange(e.target.value)}
-                            placeholder="Select, type, or leave empty"
-                            className="rounded-xl"
-                          />
-                        </FormControl>
+                        <Select
+                          value={field.value || DEFAULT_STYLE_NAMES[0]}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="rounded-xl">
+                              <SelectValue placeholder="Select style" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {styleOptions.map((sty) => (
+                              <SelectItem key={sty.id} value={sty.name}>
+                                {sty.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <Button type="button" variant="outline" size="icon" className="rounded-xl" onClick={() => setIsStyleDialogOpen(true)}><PlusCircle className="h-4 w-4" /></Button>
                       </div>
-                      <datalist id="admin-style-options">
-                        {styleOptions.map((sty) => (
-                          <option key={sty.id} value={sty.name} />
-                        ))}
-                      </datalist>
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        {styleOptions.map((sty) => (
-                          <button
-                            key={`pick-style-${sty.id}`}
-                            type="button"
-                            onClick={() => field.onChange(sty.name)}
-                            className={cn(
-                              "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
-                              (field.value || '').trim().toLowerCase() === sty.name.trim().toLowerCase()
-                                ? "bg-black text-white border-black"
-                                : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                            )}
-                          >
-                            {sty.name}
-                          </button>
-                        ))}
-                      </div>
+                      <FormDescription>Select a style preset for this product.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}/>
