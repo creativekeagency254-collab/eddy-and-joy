@@ -29,11 +29,14 @@ export interface UserCredential {
 type AuthStateCallback = (user: User | null) => void;
 type AuthErrorCallback = (error: Error) => void;
 
-const supabase = getSupabaseBrowserClient();
+function getSupabaseAuthClient() {
+  return getSupabaseBrowserClient();
+}
 
 const authSingleton: Auth = {
   currentUser: null,
   async signOut() {
+    const supabase = getSupabaseAuthClient();
     const { error } = await supabase.auth.signOut();
     if (error) {
       throw error;
@@ -93,6 +96,7 @@ export function onAuthStateChanged(
   nextOrObserver: AuthStateCallback,
   error?: AuthErrorCallback
 ) {
+  const supabase = getSupabaseAuthClient();
   let isActive = true;
 
   supabase.auth
@@ -138,13 +142,16 @@ export function onAuthStateChanged(
 }
 
 export function signInAnonymously(_auth: Auth) {
+  const supabase = getSupabaseAuthClient();
   return withAuthResult(supabase.auth.signInAnonymously() as any);
 }
 
 export function createUserWithEmailAndPassword(_auth: Auth, email: string, password: string) {
+  const supabase = getSupabaseAuthClient();
   return withAuthResult(supabase.auth.signUp({ email, password }) as any);
 }
 
 export function signInWithEmailAndPassword(_auth: Auth, email: string, password: string) {
+  const supabase = getSupabaseAuthClient();
   return withAuthResult(supabase.auth.signInWithPassword({ email, password }) as any);
 }
